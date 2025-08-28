@@ -3,7 +3,7 @@
 #include"Core.h"
 
 namespace Intro {
-	class INTRO_API Application
+	class ITR_API Application
 	{
 
 	public:

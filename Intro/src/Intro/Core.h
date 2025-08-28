@@ -1,11 +1,13 @@
 #pragma once
 
-#ifdef INTRO_PLATFORM_WINDOWS
-	#ifdef INTRO_BUILD_DLL
-		#define INTRO_API __declspec(dllexport)
+#ifdef ITR_PLATFORM_WINDOWS
+	#ifdef ITR_BUILD_DLL
+		#define ITR_API __declspec(dllexport)
 	#else
-		#define INTRO_API __declspec(dllimport)
+		#define ITR_API __declspec(dllimport)
 	#endif // INTRO_BUILD_DLL
 #else
 	#error Intro only support Windows!
 #endif // Intro_PLATFORM_WINDOWS
+
+#define BIT(x) (1 << x)
