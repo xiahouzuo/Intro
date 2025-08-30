@@ -10,4 +10,13 @@
 	#error Intro only support Windows!
 #endif // Intro_PLATFORM_WINDOWS
 
+#ifdef ITR_ENABLE_ASSERTS
+	#define ITR_ASSERT(x, ...) { if(!(x)) {ITR_ERROR("Assertion Failed: {0}", __VA_ARGS__); __debugbreak();}}
+	#define ITR_CORE_ASSERT(x, ...) { if(!(x)) {ITR_ERROR("Assertion Failed: {0}", __VA_ARGS__); __debugbreak();}}
+#else
+	#define ITR_ASSERT(x, ...)
+	#define ITR_CORE_ASSERT(x, ...)
+#endif // ITR_ENABLE_ASSERTS
+
+
 #define BIT(x) (1 << x)

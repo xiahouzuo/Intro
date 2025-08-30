@@ -10,18 +10,19 @@ namespace Intro
 	public:
 		inline int GetKeyCode() const { return m_KeyCode; };
 
-		//EVENT_CLASS_CATEGORY(EventCategoryKeyboard | EventCategoryInput)
+		EVENT_CLASS_CATEGORY(EventCategoryKeyboard | EventCategoryInput)
 	protected:
 		KeyEvent(int keycode)  //仅从派生类能创建
 			:m_KeyCode(keycode) { }
 
 		int m_KeyCode;
+
 	};
 
-	class ITR_API KeyPressEvent :public KeyEvent
+	class ITR_API KeyPressedEvent :public KeyEvent
 	{
 	public:
-		KeyPressEvent(int keycode, int repeatCount)
+		KeyPressedEvent(int keycode, int repeatCount)
 			:KeyEvent(keycode), m_RepeatCount(repeatCount) { }
 
 		inline int GetRepeatCount() const { return m_RepeatCount; }

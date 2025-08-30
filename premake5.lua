@@ -4,6 +4,11 @@ workspace "Intro"
 
 outputdir = "%{cfg.buildcfg}-%{cfg.system}-x86_64"
 
+IncludeDir = {}
+IncludeDir["GLFW"] = "Intro/vendor/GLFW/include"
+
+include "Intro/vendor/GLFW"
+
 project "Intro"
 	location "Intro"
 	kind "SharedLib"
@@ -19,7 +24,14 @@ project "Intro"
 
 	includedirs {
 		"%{prj.name}/src",
-		"%{prj.name}/vendor/spdlog/include"
+		"%{prj.name}/vendor/spdlog/include",
+		"%{IncludeDir.GLFW}"
+	}
+
+	links
+	{
+		"GLFW",
+		"opengl32.lib"
 	}
 
 	filter "system:windows"

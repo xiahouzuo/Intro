@@ -1,8 +1,6 @@
 #pragma once
 #include"../Core.h"
 #include"itrpch.h"
-
-
 namespace Intro {
 
 
@@ -77,3 +75,4 @@ namespace Intro {
 		return os << e.ToString();
 	}
 }
+

@@ -1,3 +1,4 @@
+#include"itrpch.h"
 #include<Intro.h>
 
 class Sandbox :public Intro::Application {
