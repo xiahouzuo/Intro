@@ -1,6 +1,8 @@
 #pragma once
 #include "Intro/Window.h"
-#include "GLFW/glfw3.h"
+
+struct GLFWwindow;
+
 namespace Intro {
 
 	class WindowsWindow : public Window

@@ -6,8 +6,12 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-x86_64"
 
 IncludeDir = {}
 IncludeDir["GLFW"] = "Intro/vendor/GLFW/include"
+IncludeDir["Glad"] = "Intro/vendor/Glad/include"
+IncludeDir["ImGui"] = "Intro/vendor/imgui"
 
 include "Intro/vendor/GLFW"
+include "Intro/vendor/Glad"
+include "Intro/vendor/imgui"
 
 project "Intro"
 	location "Intro"
@@ -25,12 +29,16 @@ project "Intro"
 	includedirs {
 		"%{prj.name}/src",
 		"%{prj.name}/vendor/spdlog/include",
-		"%{IncludeDir.GLFW}"
+		"%{IncludeDir.GLFW}",
+		"%{IncludeDir.Glad}",
+		"%{IncludeDir.ImGui}"
 	}
 
 	links
 	{
 		"GLFW",
+		"Glad",
+		"ImGui",
 		"opengl32.lib"
 	}
 
@@ -40,7 +48,7 @@ project "Intro"
 		systemversion "latest"
 		buildoptions { "/utf-8" }
 
-		defines { "ITR_PLATFORM_WINDOWS", "ITR_BUILD_DLL" }
+		defines { "ITR_PLATFORM_WINDOWS", "ITR_BUILD_DLL", "GLFW_INCLUDE_NONE"}
 
 		postbuildcommands {
 			("{COPY} %{cfg.buildtarget.relpath} \"../bin/" .. outputdir .. "/Sandbox/\"")
@@ -48,14 +56,17 @@ project "Intro"
 
 	filter "configurations:Debug"
 		defines "ITR_DEBUG"
+		buildoptions "/MTd"
 		symbols "On"
 
 	filter "configurations:Release"
 		defines "ITR_RELEASE"
+		buildoptions "/MT"
 		optimize "On"
 
 	filter "configurations:Dist"
 		defines "ITR_DIST"
+		buildoptions "/MT"
 		optimize "On"
 
 project "Sandbox"
@@ -96,12 +107,15 @@ project "Sandbox"
 
 	filter "configurations:Debug"
 		defines "ITR_DEBUG"
+		buildoptions "/MTd"
 		symbols "On"
 
 	filter "configurations:Release"
 		defines "ITR_RELEASE"
+		buildoptions "/MT"
 		optimize "On"
 
 	filter "configurations:Dist"
 		defines "ITR_DIST"
+		buildoptions "/MT"
 		optimize "On"

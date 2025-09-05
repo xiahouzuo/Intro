@@ -1,11 +1,33 @@
-#include"itrpch.h"
+
 #include<Intro.h>
+
+class ExampleLayer : public Intro::Layer
+{
+public:
+	ExampleLayer()
+		:Layer("Example")
+	{
+
+	}
+
+	void OnUpdate() override
+	{
+		ITR_INFO("EXAMPLELAYER::UPDATE");
+	}
+
+	void OnEvent(Intro::Event& event) override
+	{
+		ITR_TRACE("{0}", event.ToString());
+	}
+};
+
 
 class Sandbox :public Intro::Application {
 	
 public:
 	Sandbox() {
-
+		PushLayer(new ExampleLayer);
+		PushOverlay(new Intro::ImGuiLayer);
 	}
 
 	~Sandbox() {

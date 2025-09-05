@@ -4,6 +4,8 @@
 #include "Intro/Events/ApplicationEvent.h"
 #include "Intro/Events/KeyEvent.h"
 #include "Intro/Events/MouseEvent.h"
+#include <glad/glad.h>
+#include "GLFW/glfw3.h"
 
 
 namespace Intro {
@@ -48,6 +50,9 @@ namespace Intro {
 
 		m_Window = glfwCreateWindow((int)prop.Width, (int)prop.Height, m_Data.Title.c_str(), nullptr, nullptr);
 		glfwMakeContextCurrent(m_Window);
+
+		int status = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+		ITR_ASSERT(status, "Failed to initailize Glad!");
 		glfwSetWindowUserPointer(m_Window, &m_Data);
 		SetVSync(true);
 
