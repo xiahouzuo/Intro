@@ -6,6 +6,7 @@
 #include "Events/ApplicationEvent.h"
 #include "LayerStack.h"
 
+
 namespace Intro {
 	class ITR_API Application
 	{

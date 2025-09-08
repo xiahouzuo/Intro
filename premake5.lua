@@ -8,6 +8,7 @@ IncludeDir = {}
 IncludeDir["GLFW"] = "Intro/vendor/GLFW/include"
 IncludeDir["Glad"] = "Intro/vendor/Glad/include"
 IncludeDir["ImGui"] = "Intro/vendor/imgui"
+IncludeDir["glm"] = "Intro/vendor/glm"
 
 include "Intro/vendor/GLFW"
 include "Intro/vendor/Glad"
@@ -24,14 +25,19 @@ project "Intro"
 	pchheader "itrpch.h"
 	pchsource "Intro/src/itrpch.cpp"
 
-	files { "%{prj.name}/src/**.h", "%{prj.name}/src/**.cpp" }
+	files { "%{prj.name}/src/**.h",
+			"%{prj.name}/src/**.cpp",
+			"%{prj.name}/vendor/glm/glm/**.hpp",
+			"%{prj.name}/vendor/glm/glm/**.inl"
+	}
 
 	includedirs {
 		"%{prj.name}/src",
 		"%{prj.name}/vendor/spdlog/include",
 		"%{IncludeDir.GLFW}",
 		"%{IncludeDir.Glad}",
-		"%{IncludeDir.ImGui}"
+		"%{IncludeDir.ImGui}",
+		"Intro/vendor/glm"
 	}
 
 	links
@@ -83,7 +89,8 @@ project "Sandbox"
 	includedirs {
 		"Intro/vendor/spdlog/include",
 		"Intro/src",           -- 主目录
-		"Intro/src/Intro"      -- 子目录（包含Log.h的实际位置）
+		"Intro/src/Intro",      -- 子目录（包含Log.h的实际位置）
+		"%{IncludeDir.glm}"
 	}
 
 	libdirs {                  -- 添加库目录

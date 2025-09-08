@@ -14,8 +14,9 @@ public:
 	{
 		ITR_INFO("EXAMPLELAYER::UPDATE");
 
-		if (Intro::Input::IsKeyPressed(ITR_KEY_1)) {
-			ITR_INFO("Tab key is pressed!");
+		if (Intro::Input::IsKeyPressed(ITR_KEY_TAB)) {
+			ITR_TRACE("Tab key is pressed!");
+			std::cout << "11";
 		}
 	}
 
