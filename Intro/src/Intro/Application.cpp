@@ -1,6 +1,7 @@
 #include "itrpch.h"
 #include "Application.h"
 #include "Log.h"
+#include "Intro/Input.h"
 
 
 namespace Intro {
@@ -56,7 +57,7 @@ namespace Intro {
 		}
 
 
-		ITR_CORE_INFO("{0}", e.ToString());
+		//ITR_CORE_INFO("{0}", e.ToString());
 	}
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)

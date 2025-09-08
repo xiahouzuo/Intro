@@ -13,6 +13,9 @@ public:
 	void OnUpdate() override
 	{
 		ITR_INFO("EXAMPLELAYER::UPDATE");
+
+		if (Intro::Input::IsKeyPressed(ITR_KEY_TAB))
+			ITR_INFO("Tab key is pressed!");
 	}
 
 	void OnEvent(Intro::Event& event) override

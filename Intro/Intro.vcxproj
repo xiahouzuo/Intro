@@ -84,7 +84,7 @@
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
-      <AdditionalOptions>/utf-8 /MTd %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/utf-8 /MDd %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
@@ -111,7 +111,7 @@
       <MinimalRebuild>false</MinimalRebuild>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalOptions>/utf-8 /MT %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/utf-8 /MD %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
@@ -139,7 +139,7 @@
       <MinimalRebuild>false</MinimalRebuild>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
-      <AdditionalOptions>/utf-8 /MT %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions>/utf-8 /MD %(AdditionalOptions)</AdditionalOptions>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <ExternalWarningLevel>Level3</ExternalWarningLevel>
     </ClCompile>
@@ -155,6 +155,7 @@
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="src\Intro\Input.h" />
     <ClInclude Include="src\Intro.h" />
     <ClInclude Include="src\Intro\Application.h" />
     <ClInclude Include="src\Intro\Core.h" />
@@ -164,13 +165,16 @@
     <ClInclude Include="src\Intro\Events\KeyEvent.h" />
     <ClInclude Include="src\Intro\Events\MouseEvent.h" />
     <ClInclude Include="src\Intro\ImGui\ImGuiLayer.h" />
+    <ClInclude Include="src\Intro\KeyCodes.h" />
     <ClInclude Include="src\Intro\Layer.h" />
     <ClInclude Include="src\Intro\LayerStack.h" />
     <ClInclude Include="src\Intro\Log.h" />
+    <ClInclude Include="src\Intro\MouseButtonCodes.h" />
     <ClInclude Include="src\Intro\Window.h" />
     <ClInclude Include="src\Platform\OpenGL\ImGuiOpenGLRenderer.h" />
     <ClInclude Include="src\Platform\Windows\WindowsWindow.h" />
     <ClInclude Include="src\itrpch.h" />
+    <ClInclude Include="src\Platform\Windows\WindowsInput.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Intro\Application.cpp" />
@@ -183,6 +187,7 @@
     <ClCompile Include="src\itrpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="src\Platform\Windows\WindowsInput.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="vendor\GLFW\GLFW.vcxproj">

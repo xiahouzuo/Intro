@@ -19,7 +19,7 @@ namespace Intro
 		std::string ToString() const override
 		{
 			std::stringstream ss;
-			ss << "KeyReleasedEvent: " << m_MouseX <<", "<<m_MouseY << std::endl;
+			ss << "MouseMovedEvent: " << m_MouseX <<", "<<m_MouseY << std::endl;
 			return ss.str();
 		}
 
@@ -43,7 +43,7 @@ namespace Intro
 		std::string ToString() const override
 		{
 			std::stringstream ss;
-			ss << "KeyReleasedEvent: " << GetXOffset() << ", " << GetYOffset() << std::endl;
+			ss << "MouseScrolledEvent: " << GetXOffset() << ", " << GetYOffset() << std::endl;
 			return ss.str();
 		}
 

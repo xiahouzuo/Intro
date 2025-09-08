@@ -56,4 +56,21 @@ namespace Intro
 	private:
 	};
 
+	class ITR_API KeyTypedEvent :public KeyEvent
+	{
+	public:
+		KeyTypedEvent(int keycode)
+			:KeyEvent(keycode) {
+		}
+
+		std::string ToString() const override
+		{
+			std::stringstream ss;
+			ss << "KeyTypedEvent: " << m_KeyCode << std::endl;
+			return ss.str();
+		}
+
+		EVENT_CLASS_TYPE(KeyTyped)
+	private:
+	};
 }
