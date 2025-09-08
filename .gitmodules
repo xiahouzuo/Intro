@@ -1,3 +1,6 @@
 [submodule "Intro/vendor/spdlog"]
 	path = Intro/vendor/spdlog
 	url = https://github.com/gabime/spdlog
+[submodule "Intro/vendor/glm"]
+	path = Intro/vendor/glm
+	url = https://github.com/g-truc/glm
