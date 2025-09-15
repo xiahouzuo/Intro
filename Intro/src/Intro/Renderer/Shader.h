@@ -2,6 +2,8 @@
 #include "Intro/Core.h"
 #include <string>
 #include "glm/glm.hpp"
+#include <glad/glad.h>
+#include "Intro/Log.h"
 
 namespace Intro {
 

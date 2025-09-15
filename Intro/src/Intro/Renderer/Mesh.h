@@ -17,7 +17,7 @@ namespace Intro {
 		Mesh(std::vector<Vertex> vertices, std::vector<unsigned int> indices)
 			:Vertices(vertices), Indices(indices)
 		{
-
+			SetupMesh();
 		}
 
 		void Draw() const;

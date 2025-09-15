@@ -1,6 +1,6 @@
 #include "itrpch.h"
 #include "Shader.h"
-#include "glad/glad.h"
+
 #include "glm/gtc/packing.inl"
 
 void Intro::Shader::Bind() const
@@ -24,19 +24,32 @@ void Intro::Shader::CompileShader(const std::string& VertexShaderSource, const s
     const char* vertexShaderSouceCode = VertexShaderSource.c_str();
     glShaderSource(vertexshader, 1, &vertexShaderSouceCode, NULL);
     glCompileShader(vertexshader);
+    int success;
+    glGetShaderiv(vertexshader, GL_COMPILE_STATUS, &success);
+    if (!success) {
+        char infoLog[512];
+        glGetShaderInfoLog(vertexshader, 512, NULL, infoLog);
+        ITR_CORE_ERROR("顶点着色器编译失败: {0}", infoLog);
+    }
 
     unsigned int fragmentshader = glCreateShader(GL_FRAGMENT_SHADER);
     const char* fragmentshaderSouceCode = FragmentShaderSource.c_str();
     glShaderSource(fragmentshader, 1, &fragmentshaderSouceCode, NULL);
     glCompileShader(fragmentshader);
+    glGetProgramiv(m_ShaderID, GL_LINK_STATUS, &success);
+    if (!success) {
+        char infoLog[512];
+        glGetProgramInfoLog(m_ShaderID, 512, NULL, infoLog);
+        ITR_CORE_ERROR("着色器程序链接失败: {0}", infoLog);
+    }
 
     m_ShaderID = glCreateProgram();
     glAttachShader(m_ShaderID, vertexshader);
     glAttachShader(m_ShaderID, fragmentshader);
     glLinkProgram(m_ShaderID);
 
-    glDeleteProgram(vertexshader);
-    glDeleteProgram(fragmentshader);
+    glDeleteShader(vertexshader);
+    glDeleteShader(fragmentshader);
 }
 
 int Intro::Shader::GetUniformLocation(const std::string& name) const

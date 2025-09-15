@@ -100,7 +100,8 @@ project "Sandbox"
 		"Intro/src",           -- 主目录
 		"Intro/src/Intro",      -- 子目录（包含Log.h的实际位置）
 		"Intro/vendor/glm",
-		"%{IncludeDir.nlohmann}"
+		"%{IncludeDir.nlohmann}",
+		"%{IncludeDir.Glad}"
 	}
 
 	libdirs {                  -- 添加库目录
