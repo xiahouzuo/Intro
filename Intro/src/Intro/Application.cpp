@@ -41,6 +41,7 @@ namespace Intro {
 				layer->OnUpdate();
 
 			m_Window->OnUpdate();
+
 		}
 	}
 

@@ -1,0 +1,29 @@
+#pragma once
+#include "Intro/Core.h"
+#include <string>
+#include "glm/glm.hpp"
+
+namespace Intro {
+
+	class ITR_API Shader
+	{
+	public:
+		Shader(const std::string& VertexShader, const std::string& FragmentShder)
+		{ 
+			CompileShader(VertexShader, FragmentShder); 
+		}
+		void Bind() const;
+		void UnBind() const;
+
+		unsigned int GetShaderID() const { return m_ShaderID; }
+
+		void SetUniformMat4(const std::string& name, const glm::mat4& value) const;
+	private:
+		void CompileShader(const std::string& VertexShaderSource, const std::string& FragmentShaderSource);
+
+		int GetUniformLocation(const std::string& name) const;
+	private:
+		unsigned int m_ShaderID;
+	};
+
+}

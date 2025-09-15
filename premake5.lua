@@ -9,6 +9,9 @@ IncludeDir["GLFW"] = "Intro/vendor/GLFW/include"
 IncludeDir["Glad"] = "Intro/vendor/Glad/include"
 IncludeDir["ImGui"] = "Intro/vendor/imgui"
 IncludeDir["glm"] = "Intro/vendor/glm"
+IncludeDir["nlohmann"] = "Intro/vendor/nlohmann"
+IncludeDir["entt"] = "Intro/vendor/entt"
+IncludeDir["Assimp"] = "Intro/vendor/assimp"
 
 include "Intro/vendor/GLFW"
 include "Intro/vendor/Glad"
@@ -26,9 +29,7 @@ project "Intro"
 	pchsource "Intro/src/itrpch.cpp"
 
 	files { "%{prj.name}/src/**.h",
-			"%{prj.name}/src/**.cpp",
-			"%{prj.name}/vendor/glm/glm/**.hpp",
-			"%{prj.name}/vendor/glm/glm/**.inl"
+			"%{prj.name}/src/**.cpp"
 	}
 
 	includedirs {
@@ -37,7 +38,14 @@ project "Intro"
 		"%{IncludeDir.GLFW}",
 		"%{IncludeDir.Glad}",
 		"%{IncludeDir.ImGui}",
-		"Intro/vendor/glm"
+		"Intro/vendor/glm",
+		"Intro/vendor/nlohmann",
+		"Intro/vendor/entt",
+		"Intro/vendor/assimp/include"
+	}
+
+	libdirs{
+		"Intro/vendor/assimp"
 	}
 
 	links
@@ -45,7 +53,8 @@ project "Intro"
 		"GLFW",
 		"Glad",
 		"ImGui",
-		"opengl32.lib"
+		"opengl32.lib",
+		"assimp-vc143-mt.lib"
 	}
 
 	filter "system:windows"
@@ -90,7 +99,8 @@ project "Sandbox"
 		"Intro/vendor/spdlog/include",
 		"Intro/src",           -- 主目录
 		"Intro/src/Intro",      -- 子目录（包含Log.h的实际位置）
-		"%{IncludeDir.glm}"
+		"Intro/vendor/glm",
+		"%{IncludeDir.nlohmann}"
 	}
 
 	libdirs {                  -- 添加库目录
@@ -107,10 +117,6 @@ project "Sandbox"
 
 		defines { "ITR_PLATFORM_WINDOWS" }
 
-		-- 移除不必要的后期生成命令
-		-- postbuildcommands {
-		--	("{COPY} %{cfg.buildtarget.relpath} ../bin/" .. outputdir .. "/Sandbox")
-		-- }
 
 	filter "configurations:Debug"
 		defines "ITR_DEBUG"
@@ -126,3 +132,4 @@ project "Sandbox"
 		defines "ITR_DIST"
 		buildoptions "/MD"
 		optimize "On"
+

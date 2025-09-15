@@ -31,7 +31,7 @@ class Sandbox :public Intro::Application {
 	
 public:
 	Sandbox() {
-		PushLayer(new ExampleLayer);
+		PushLayer(new Intro::RendererLayer(GetWindow()));
 		PushOverlay(new Intro::ImGuiLayer);
 	}
 

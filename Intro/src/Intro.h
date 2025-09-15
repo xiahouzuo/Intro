@@ -10,6 +10,7 @@
 
 
 #include"Intro/ImGui/ImGuiLayer.h"
+#include"Intro/Renderer/RendererLayer.h"
 
 //½øÈëµã-------------------
 #include "Intro/EntryPoint.h"
