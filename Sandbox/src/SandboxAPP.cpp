@@ -10,7 +10,7 @@ public:
 
 	}
 
-	void OnUpdate() override
+	void OnUpdate(float deltaTime) override
 	{
 		ITR_INFO("EXAMPLELAYER::UPDATE");
 

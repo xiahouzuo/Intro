@@ -3,6 +3,7 @@
 #include "Log.h"
 #include "Intro/Input.h"
 #include "glm/glm.hpp"
+#include <GLFW/glfw3.h>
 
 namespace Intro {
 
@@ -35,13 +36,18 @@ namespace Intro {
 	}
 
 	void Application::Run() {
+		float lastFrameTime = 0.0f; // 上一帧的时间
+
 		while (m_Running)
 		{
+			float currentTime = (float)glfwGetTime(); // 假设使用 GLFW，需要包含 GLFW/glfw3.h
+			float deltaTime = currentTime - lastFrameTime;
+			lastFrameTime = currentTime;
+
 			for (Layer* layer : m_LayerStack)
-				layer->OnUpdate();
+				layer->OnUpdate(deltaTime); // 传递 deltaTime
 
 			m_Window->OnUpdate();
-
 		}
 	}
 
