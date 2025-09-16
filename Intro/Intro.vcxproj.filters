@@ -4,6 +4,12 @@
     <Filter Include="Intro">
       <UniqueIdentifier>{314B660D-9D5F-8EBE-66E1-311ED2B48AEF}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Intro\ECS">
+      <UniqueIdentifier>{FB6F25A1-67DA-D917-B018-8BBD1CC2B76C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Intro\ECS\Systems">
+      <UniqueIdentifier>{02910199-6EA7-FF2E-B71E-8B502374D0B6}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Intro\Events">
       <UniqueIdentifier>{F555138C-E1B8-A230-8A3E-DBE676806EB3}</UniqueIdentifier>
     </Filter>
@@ -30,6 +36,12 @@
     </ClInclude>
     <ClInclude Include="src\Intro\Core.h">
       <Filter>Intro</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\ECS\Components.h">
+      <Filter>Intro\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\ECS\Systems\RendererSystem.h">
+      <Filter>Intro\ECS\Systems</Filter>
     </ClInclude>
     <ClInclude Include="src\Intro\EntryPoint.h">
       <Filter>Intro</Filter>
@@ -79,6 +91,9 @@
     <ClInclude Include="src\Intro\Renderer\Shader.h">
       <Filter>Intro\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Intro\Renderer\ShapeGenerator.h">
+      <Filter>Intro\Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\Intro\Renderer\Vertex.h">
       <Filter>Intro\Renderer</Filter>
     </ClInclude>
@@ -95,9 +110,6 @@
       <Filter>Platform\Windows</Filter>
     </ClInclude>
     <ClInclude Include="src\itrpch.h" />
-    <ClInclude Include="src\Intro\ECS\Systems\RendererSystem.h" />
-    <ClInclude Include="src\Intro\ECS\Components.h" />
-    <ClInclude Include="src\Intro\Renderer\PrimitiveGenerator.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Intro\Application.cpp">
@@ -127,6 +139,9 @@
     <ClCompile Include="src\Intro\Renderer\Shader.cpp">
       <Filter>Intro\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\Intro\Renderer\ShapeGenerator.cpp">
+      <Filter>Intro\Renderer</Filter>
+    </ClCompile>
     <ClCompile Include="src\Platform\OpenGL\ImGuiOpenGLRenderer.cpp">
       <Filter>Platform\OpenGL</Filter>
     </ClCompile>
@@ -137,6 +152,5 @@
       <Filter>Platform\Windows</Filter>
     </ClCompile>
     <ClCompile Include="src\itrpch.cpp" />
-    <ClCompile Include="src\Intro\Renderer\PrimitiveGenerator.cpp" />
   </ItemGroup>
 </Project>

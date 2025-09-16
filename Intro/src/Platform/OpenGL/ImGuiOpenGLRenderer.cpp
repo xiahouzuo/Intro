@@ -54,7 +54,7 @@
 #endif
 
 #include "itrpch.h"
-#include "Intro/vendor/imgui/imgui.h"
+#include "imgui.h"
 #include "glad/glad.h"
 #include "ImGuiOpenGLRenderer.h"
 #include <stdio.h>

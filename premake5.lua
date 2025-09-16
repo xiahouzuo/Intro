@@ -37,7 +37,7 @@ project "Intro"
 		"%{prj.name}/vendor/spdlog/include",
 		"%{IncludeDir.GLFW}",
 		"%{IncludeDir.Glad}",
-		"%{IncludeDir.ImGui}",
+		"Intro/vendor/imgui",
 		"Intro/vendor/glm",
 		"Intro/vendor/nlohmann",
 		"Intro/vendor/entt",

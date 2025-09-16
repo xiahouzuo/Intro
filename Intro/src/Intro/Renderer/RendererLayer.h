@@ -1,3 +1,4 @@
+// 修改 Intro/Intro/src/Intro/Renderer/RendererLayer.h
 #pragma once
 #include "Intro/Core.h"
 #include "Intro/Layer.h"
@@ -5,25 +6,38 @@
 #include "Camera.h"
 #include "Shader.h"
 #include "Mesh.h"
+#include "ShapeGenerator.h"  // 添加包含
 #include <memory>
+#include <vector>  // 添加包含
 
 namespace Intro {
 
-	class ITR_API RendererLayer : public Layer
-	{
-	public:
-		RendererLayer(const Window& window);
+    enum class ShapeType {
+        Cube,
+        Sphere,
+        Plane
+    };
 
-		void OnUpdate(float deltaTime);
-	private:
-		void InitTestMesh();
+    class ITR_API RendererLayer : public Layer
+    {
+    public:
+        RendererLayer(const Window& window);
 
-	private:
-		const Window& m_Window;
-		Camera m_Camera;
-		std::unique_ptr<Shader> m_Shader;
+        void OnAttach() override;
+        void OnUpdate(float deltaTime) override;
+        void OnImGuiRender() override;  // 添加ImGui渲染方法
+    private:
+        void InitShapes();  // 初始化所有形状
+        void UpdateCurrentShape();  // 更新当前显示的形状
 
-		std::unique_ptr<Mesh> m_TestMesh;
+    private:
+        const Window& m_Window;
+        Camera m_Camera;
+        std::unique_ptr<Shader> m_Shader;
+
+        ShapeType m_CurrentShape = ShapeType::Cube;
+        std::vector<std::unique_ptr<Mesh>> m_Shapes;  // 存储所有形状
+        std::unique_ptr<Mesh> m_TestMesh;  // 保留原测试三角形
 
         const std::string DefaultVertexShader = R"(
     #version 330 core
@@ -50,5 +64,5 @@ namespace Intro {
         FragColor = vec4(1.0, 0.0, 0.0, 1.0); // 红色
     }
 )";
-	};
+    };
 }
