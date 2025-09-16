@@ -161,6 +161,8 @@
     <ClInclude Include="src\Intro.h" />
     <ClInclude Include="src\Intro\Application.h" />
     <ClInclude Include="src\Intro\Core.h" />
+    <ClInclude Include="src\Intro\ECS\Components.h" />
+    <ClInclude Include="src\Intro\ECS\Systems\RendererSystem.h" />
     <ClInclude Include="src\Intro\EntryPoint.h" />
     <ClInclude Include="src\Intro\Events\ApplicationEvent.h" />
     <ClInclude Include="src\Intro\Events\Event.h" />
@@ -175,6 +177,7 @@
     <ClInclude Include="src\Intro\MouseButtonCodes.h" />
     <ClInclude Include="src\Intro\Renderer\Camera.h" />
     <ClInclude Include="src\Intro\Renderer\Mesh.h" />
+    <ClInclude Include="src\Intro\Renderer\PrimitiveGenerator.h" />
     <ClInclude Include="src\Intro\Renderer\RendererLayer.h" />
     <ClInclude Include="src\Intro\Renderer\Shader.h" />
     <ClInclude Include="src\Intro\Renderer\Vertex.h" />
@@ -192,6 +195,7 @@
     <ClCompile Include="src\Intro\Log.cpp" />
     <ClCompile Include="src\Intro\Renderer\Camera.cpp" />
     <ClCompile Include="src\Intro\Renderer\Mesh.cpp" />
+    <ClCompile Include="src\Intro\Renderer\PrimitiveGenerator.cpp" />
     <ClCompile Include="src\Intro\Renderer\RendererLayer.cpp" />
     <ClCompile Include="src\Intro\Renderer\Shader.cpp" />
     <ClCompile Include="src\Platform\OpenGL\ImGuiOpenGLRenderer.cpp" />

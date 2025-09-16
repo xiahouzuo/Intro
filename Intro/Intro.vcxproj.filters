@@ -95,6 +95,9 @@
       <Filter>Platform\Windows</Filter>
     </ClInclude>
     <ClInclude Include="src\itrpch.h" />
+    <ClInclude Include="src\Intro\ECS\Systems\RendererSystem.h" />
+    <ClInclude Include="src\Intro\ECS\Components.h" />
+    <ClInclude Include="src\Intro\Renderer\PrimitiveGenerator.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Intro\Application.cpp">
@@ -134,5 +137,6 @@
       <Filter>Platform\Windows</Filter>
     </ClCompile>
     <ClCompile Include="src\itrpch.cpp" />
+    <ClCompile Include="src\Intro\Renderer\PrimitiveGenerator.cpp" />
   </ItemGroup>
 </Project>
