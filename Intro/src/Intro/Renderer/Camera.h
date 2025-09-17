@@ -31,7 +31,7 @@ namespace Intro {
 		glm::mat4 GetProjectionMat() const;
 
 		void OnUpdate(float deltaTime);
-
+		
 	};
 
 }

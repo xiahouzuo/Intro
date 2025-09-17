@@ -10,9 +10,9 @@ namespace Intro {
 	class ITR_API Shader
 	{
 	public:
-		Shader(const std::string& VertexShader, const std::string& FragmentShder)
+		Shader(const char* vertexShaderPath, const char* fragmentShaderPath)
 		{ 
-			CompileShader(VertexShader, FragmentShder); 
+			CompileShader(vertexShaderPath, fragmentShaderPath);
 		}
 		void Bind() const;
 		void UnBind() const;
@@ -21,7 +21,7 @@ namespace Intro {
 
 		void SetUniformMat4(const std::string& name, const glm::mat4& value) const;
 	private:
-		void CompileShader(const std::string& VertexShaderSource, const std::string& FragmentShaderSource);
+		void CompileShader(const char* vertexShaderPath, const char* fragmentShaderPath);
 
 		int GetUniformLocation(const std::string& name) const;
 	private:

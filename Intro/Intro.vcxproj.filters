@@ -153,4 +153,8 @@
     </ClCompile>
     <ClCompile Include="src\itrpch.cpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="src\Intro\Assert\Shaders\BasicShader.vert" />
+    <None Include="src\Intro\Assert\Shaders\BasicShader.frag" />
+  </ItemGroup>
 </Project>

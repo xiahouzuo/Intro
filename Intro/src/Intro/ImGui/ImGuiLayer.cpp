@@ -1,6 +1,8 @@
 #include "itrpch.h"
 #include "ImGuiLayer.h"
 #include "Platform/OpenGL/ImGuiOpenGLRenderer.h"
+#include "backends/imgui_impl_opengl3.h"
+#include "backends/imgui_impl_glfw.h"
 #include "Intro/Application.h"
 
 #include <glad/glad.h>
@@ -28,9 +30,11 @@ namespace Intro {
 		io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
 		io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
 
-
-
+		GLFWwindow* window = (GLFWwindow*)Application::Get().GetWindow().GetNativeWindow();
+		IM_ASSERT(window != nullptr);
+		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init("#version 410");
+
 	}
 
 	void ImGuiLayer::OnDetach()
@@ -49,14 +53,32 @@ namespace Intro {
 		io.DeltaTime = m_Time > 0.0f ? (time - m_Time) : (1.0f / 60.0f);
 		m_Time = time;
 
+		ImGui_ImplGlfw_NewFrame();
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui::NewFrame();
+
+		if (m_RendererLayer)
+			DrawShapeSelector();
 
 		static bool show = true;
 		ImGui::ShowDemoWindow(&show);
 
 		ImGui::Render();
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+	}
+
+	void ImGuiLayer::DrawShapeSelector()
+	{
+		ImGui::Begin("Shape Generator");
+
+		const char* shapeNames[] = { "Null", "Cube", "Sphere", "Plane" };
+		int current = (int)m_RendererLayer->GetCurrentType();
+		if (ImGui::Combo("shape type", &current, shapeNames, IM_ARRAYSIZE(shapeNames)))
+		{
+			m_RendererLayer->SetCurrentType((ShapeType)current);
+		}
+
+		ImGui::End();
 	}
 
 	void ImGuiLayer::OnEvent(Event& event)

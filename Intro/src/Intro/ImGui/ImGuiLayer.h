@@ -4,6 +4,7 @@
 #include "Intro/Events/ApplicationEvent.h"
 #include "Intro/Events/KeyEvent.h"
 #include "Intro/Events/MouseEvent.h"
+#include "Intro/Renderer/RendererLayer.h"
 
 namespace Intro {
 
@@ -17,6 +18,8 @@ namespace Intro {
 		void OnDetach();
 		void OnUpdate();
 		void OnEvent(Event& event);
+
+		void SetRendererLayer(RendererLayer* layer) { m_RendererLayer = layer; }
 	private:
 		bool OnMouseButtonPressedEvent(MouseButtonPressedEvent& e);
 		bool OnMouseButtonReleasedEvent(MouseButtonReleasedEvent& e);
@@ -26,8 +29,12 @@ namespace Intro {
 		bool OnKeyReleasedEvent(KeyReleasedEvent& e);
 		bool OnKeyTypedEvent(KeyTypedEvent& e);
 		bool OnWindowResizedEvent(WindowResizeEvent& e);
+
+		void DrawShapeSelector();
 	private:
 		float m_Time = 0.0f;
+
+		RendererLayer* m_RendererLayer;
 	};
 
 }

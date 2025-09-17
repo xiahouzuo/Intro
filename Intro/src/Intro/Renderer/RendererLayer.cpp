@@ -2,8 +2,9 @@
 #include "RendererLayer.h"
 #include "imgui.h"
 #include <glad/glad.h>
-#include "backends/imgui_impl_glfw.h"
-#include "backends/imgui_impl_opengl3.h"
+
+
+
 #include <GLFW/glfw3.h>
 namespace Intro {
 
@@ -11,8 +12,13 @@ namespace Intro {
 		:Layer("Renderer Layer"), m_Window(window), m_Camera(window)
 	{
 		
-		m_Shader = std::make_unique<Shader>(DefaultVertexShader, DefaultFragmentShader);
+		m_Shader = std::make_unique<Shader>("E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.vert", "E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.frag");
 		InitShapes();
+	}
+
+	void RendererLayer::SetCurrentType(ShapeType type)
+	{
+		m_CurrentShape = type;
 	}
 
 	void RendererLayer::InitShapes()
@@ -29,25 +35,11 @@ namespace Intro {
 
 	void RendererLayer::OnAttach()
 	{
-		ImGui::CreateContext();
-		ImGui::StyleColorsDark();
-
-		ImGuiIO& io = ImGui::GetIO();
-		io.BackendFlags |= ImGuiBackendFlags_HasMouseCursors;
-		io.BackendFlags |= ImGuiBackendFlags_HasSetMousePos;
-
-
-		GLFWwindow* window = (GLFWwindow*)m_Window.GetNativeWindow();  // 请确保你的 Window 类实现了这个方法
-		IM_ASSERT(window != nullptr);  // 确保窗口指针有效
-		ImGui_ImplGlfw_InitForOpenGL(window, true);  // 绑定 GLFW 窗口
-
-		// 3. 初始化 OpenGL 后端（已存在，但版本号需匹配你的环境）
-		ImGui_ImplOpenGL3_Init("#version 410");
+		glEnable(GL_DEPTH_TEST);
 	}
 
 	void RendererLayer::OnUpdate(float deltaTime)
 	{
-		glEnable(GL_DEPTH_TEST);
 
 		m_Camera.OnUpdate(deltaTime);
 		glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
@@ -64,6 +56,9 @@ namespace Intro {
 		m_Shader->SetUniformMat4("projection", proj);
 
 		switch (m_CurrentShape) {
+			case ShapeType::Null:
+				glClear(GL_COLOR_BUFFER_BIT);
+				break;
 			case ShapeType::Cube:
 				m_Shapes[0]->Draw();
 				break;
@@ -79,26 +74,17 @@ namespace Intro {
 
 	}
 
-	void RendererLayer::OnImGuiRender()
+	void RendererLayer::OnEvent(Event& event)
 	{
-		ImGui_ImplOpenGL3_NewFrame();  // OpenGL 后端帧开始
-		ImGui_ImplGlfw_NewFrame();     // GLFW 后端帧开始
-		ImGui::NewFrame();
+		EventDispatcher dispathcer(event);
 
-		ImGui::Begin("Shape Generator");
+		dispathcer.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(RendererLayer::OnWindowResized));
+	}
 
-		const char* shapeNames[] = { "Cube", "Sphere", "Plane" };
-		if (ImGui::Combo("Shape type", (int*)&m_CurrentShape, shapeNames, IM_ARRAYSIZE(shapeNames)))
-		{
-			UpdateCurrentShape();
-		}
-
-
-		ImGui::End();
-
-		ImGui::Render();  // 生成绘制数据
-		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
+	bool RendererLayer::OnWindowResized(WindowResizeEvent& e)
+	{
+		m_Camera.AspectRatio = ((float)e.GetWidth() / (float)e.GetHeight());
+		return false;
 	}
 
 

@@ -3,6 +3,7 @@
 #include "Intro/Core.h"
 #include "Intro/Layer.h"
 #include "Intro/Window.h"
+#include "Intro/Events/ApplicationEvent.h"
 #include "Camera.h"
 #include "Shader.h"
 #include "Mesh.h"
@@ -13,6 +14,7 @@
 namespace Intro {
 
     enum class ShapeType {
+        Null,
         Cube,
         Sphere,
         Plane
@@ -25,44 +27,23 @@ namespace Intro {
 
         void OnAttach() override;
         void OnUpdate(float deltaTime) override;
-        void OnImGuiRender() override;  // 添加ImGui渲染方法
+        void OnEvent(Event& event) override;
+
+        ShapeType GetCurrentType() const { return m_CurrentShape; }
+        void SetCurrentType(ShapeType type);
     private:
         void InitShapes();  // 初始化所有形状
         void UpdateCurrentShape();  // 更新当前显示的形状
+        bool OnWindowResized(WindowResizeEvent& e);
 
     private:
         const Window& m_Window;
         Camera m_Camera;
         std::unique_ptr<Shader> m_Shader;
 
-        ShapeType m_CurrentShape = ShapeType::Cube;
+        ShapeType m_CurrentShape = ShapeType::Null;
         std::vector<std::unique_ptr<Mesh>> m_Shapes;  // 存储所有形状
         std::unique_ptr<Mesh> m_TestMesh;  // 保留原测试三角形
 
-        const std::string DefaultVertexShader = R"(
-    #version 330 core
-    layout (location = 0) in vec3 aPos;      // 与Mesh的Vertex.Position对应（location=0）
-    layout (location = 1) in vec3 aNormal;   // 暂时不用，保留
-    layout (location = 2) in vec2 aTexCoords;// 暂时不用，保留
-
-    uniform mat4 model;      // 模型矩阵（物体自身的变换）
-    uniform mat4 view;       // 视图矩阵（摄像机的变换）
-    uniform mat4 projection; // 投影矩阵（透视/正交）
-
-    void main() {
-        // 核心：顶点坐标 = 投影矩阵 * 视图矩阵 * 模型矩阵 * 局部坐标
-        gl_Position = projection * view * model * vec4(aPos, 1.0);
-    }
-)";
-
-        // 片段着色器：输出固定颜色（红色，当天测试用）
-        const std::string DefaultFragmentShader = R"(
-    #version 330 core
-    out vec4 FragColor; // 输出颜色
-
-    void main() {
-        FragColor = vec4(1.0, 0.0, 0.0, 1.0); // 红色
-    }
-)";
     };
 }

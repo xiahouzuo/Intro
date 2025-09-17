@@ -31,8 +31,12 @@ class Sandbox :public Intro::Application {
 	
 public:
 	Sandbox() {
-		PushLayer(new Intro::RendererLayer(GetWindow()));
-		PushOverlay(new Intro::ImGuiLayer);
+		Intro::RendererLayer* rendererlayer = new Intro::RendererLayer(GetWindow());
+		PushLayer(rendererlayer);
+
+		Intro::ImGuiLayer* imguilayer = new Intro::ImGuiLayer();
+		imguilayer->SetRendererLayer(rendererlayer);
+		PushOverlay(imguilayer);
 	}
 
 	~Sandbox() {
