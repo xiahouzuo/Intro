@@ -42,7 +42,7 @@ namespace Intro {
 		
 	}
 
-	void ImGuiLayer::OnUpdate()
+	void ImGuiLayer::OnUpdate(float deltaTime)
 	{
 
 		ImGuiIO& io = ImGui::GetIO();

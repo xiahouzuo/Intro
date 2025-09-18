@@ -47,9 +47,6 @@ namespace Intro {
 			for (Layer* layer : m_LayerStack)
 				layer->OnUpdate(deltaTime); // ´«µÝ deltaTime
 
-			for (Layer* layer : m_LayerStack)
-				layer->OnImGuiRender();
-
 			m_Window->OnUpdate();
 		}
 	}

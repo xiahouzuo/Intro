@@ -16,7 +16,7 @@ namespace Intro {
 
 		void OnAttach();
 		void OnDetach();
-		void OnUpdate();
+		void OnUpdate(float deltaTime) override;
 		void OnEvent(Event& event);
 
 		void SetRendererLayer(RendererLayer* layer) { m_RendererLayer = layer; }

@@ -9,7 +9,7 @@
 namespace Intro{
 	Camera::Camera(const Window& window)
 	{
-		AspectRatio = window.GetWidth() / window.GetHeight();
+		AspectRatio = (float)window.GetWidth() / (float)window.GetHeight();
 	}
 	glm::mat4 Camera::GetViewMat() const
 	{
