@@ -1,0 +1,13 @@
+prefix=E:/Libraries/Assimp
+exec_prefix=E:/Libraries/Assimp
+libdir=
+sharedlibdir=
+includedir=
+
+Name: zlib
+Description: zlib compression library
+Version: 
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}

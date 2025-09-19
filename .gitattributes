@@ -1,1 +1,2 @@
 Intro/vendor/assimp/assimp-vc143-mt.lib filter=lfs diff=lfs merge=lfs -text
+*.lib filter=lfs diff=lfs merge=lfs -text

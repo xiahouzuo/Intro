@@ -3,15 +3,16 @@
 #include <glad/glad.h>
 
 namespace Intro {
-
-	void Intro::Mesh::Draw() const
+	
+	void Mesh::Draw() const
 	{
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, Indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
 	}
 
-	void Intro::Mesh::SetupMesh()
+
+	void Mesh::SetupMesh()
 	{
 		glGenVertexArrays(1, &VAO);
 		glGenBuffers(1, &VBO);
