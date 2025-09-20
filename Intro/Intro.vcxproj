@@ -80,7 +80,7 @@
       <PrecompiledHeaderFile>itrpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;ITR_BUILD_DLL;GLFW_INCLUDE_NONE;ITR_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\nlohmann;vendor\entt;vendor\assimp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\nlohmann;vendor\entt;vendor\assimp\include;vendor\stbimage;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
@@ -105,7 +105,7 @@
       <PrecompiledHeaderFile>itrpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;ITR_BUILD_DLL;GLFW_INCLUDE_NONE;ITR_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\nlohmann;vendor\entt;vendor\assimp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\nlohmann;vendor\entt;vendor\assimp\include;vendor\stbimage;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -134,7 +134,7 @@
       <PrecompiledHeaderFile>itrpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;ITR_BUILD_DLL;GLFW_INCLUDE_NONE;ITR_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\nlohmann;vendor\entt;vendor\assimp\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\nlohmann;vendor\entt;vendor\assimp\include;vendor\stbimage;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -180,6 +180,7 @@
     <ClInclude Include="src\Intro\Renderer\RendererLayer.h" />
     <ClInclude Include="src\Intro\Renderer\Shader.h" />
     <ClInclude Include="src\Intro\Renderer\ShapeGenerator.h" />
+    <ClInclude Include="src\Intro\Renderer\Texture.h" />
     <ClInclude Include="src\Intro\Renderer\Vertex.h" />
     <ClInclude Include="src\Intro\Window.h" />
     <ClInclude Include="src\Platform\OpenGL\ImGuiOpenGLRenderer.h" />
@@ -199,6 +200,7 @@
     <ClCompile Include="src\Intro\Renderer\RendererLayer.cpp" />
     <ClCompile Include="src\Intro\Renderer\Shader.cpp" />
     <ClCompile Include="src\Intro\Renderer\ShapeGenerator.cpp" />
+    <ClCompile Include="src\Intro\Renderer\Texture.cpp" />
     <ClCompile Include="src\Platform\OpenGL\ImGuiOpenGLRenderer.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />

@@ -12,7 +12,9 @@ namespace Intro {
 		:Layer("Renderer Layer"), m_Window(window), m_Camera(window)
 	{
 		
-		m_Shader = std::make_unique<Shader>("E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.vert", "E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.frag");
+		m_Shader = std::make_unique<Shader>("E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.vert",
+			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.frag");
+		m_Model = std::make_unique<Intro::Model>("E:/MyEngine/Intro/Intro/src/Intro/Assert/models/backpack.obj");
 		InitShapes();
 	}
 
@@ -23,14 +25,16 @@ namespace Intro {
 
 	void RendererLayer::InitShapes()
 	{
+		std::vector<std::shared_ptr<Texture>> emptyTexture = {};
+
 		auto [cubeVertices, cubeIndices] = ShapeGenerator::GenerateCube(1.0f);
-		m_Shapes.push_back(std::make_unique<Mesh>(cubeVertices, cubeIndices));
+		m_Shapes.push_back(std::make_unique<Mesh>(cubeVertices, cubeIndices, emptyTexture));
 
 		auto [sphereVertices, sphereIndices] = ShapeGenerator::GenerateSphere(0.8f);
-		m_Shapes.push_back(std::make_unique<Mesh>(sphereVertices, sphereIndices));
+		m_Shapes.push_back(std::make_unique<Mesh>(sphereVertices, sphereIndices, emptyTexture));
 
 		auto [planeVertices, planeIndices] = ShapeGenerator::GeneratePlane(2.0f, 2.0f);
-		m_Shapes.push_back(std::make_unique<Mesh>(planeVertices, planeIndices));
+		m_Shapes.push_back(std::make_unique<Mesh>(planeVertices, planeIndices, emptyTexture));
 	}
 
 	void RendererLayer::OnAttach()
@@ -54,22 +58,23 @@ namespace Intro {
 		m_Shader->SetUniformMat4("model", model);
 		m_Shader->SetUniformMat4("view", view);
 		m_Shader->SetUniformMat4("projection", proj);
+		m_Shader->SetUniformVec3("viewPos", m_Camera.Position);
 
 		switch (m_CurrentShape) {
 			case ShapeType::Null:
 				glClear(GL_COLOR_BUFFER_BIT);
 				break;
 			case ShapeType::Cube:
-				m_Shapes[0]->Draw();
+				m_Shapes[0]->Draw(*m_Shader);
 				break;
 			case ShapeType::Sphere:
-				m_Shapes[1]->Draw();
+				m_Shapes[1]->Draw(*m_Shader);
 				break;
 			case ShapeType::Plane:
-				m_Shapes[2]->Draw();
+				m_Shapes[2]->Draw(*m_Shader);
 				break;
 		}
-
+		m_Model->Draw(*m_Shader);
 		m_Shader->UnBind();
 
 	}

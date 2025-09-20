@@ -8,7 +8,7 @@ public:
 	ExampleLayer()
 		:Layer("Example")
 	{
-		m_Model = std::make_unique<Intro::Model>("E:/MyEngine/Intro/Intro/src/Intro/Assert/models/backpack.obj");
+		
 	}
 
 	void OnUpdate(float deltaTime) override
@@ -19,7 +19,7 @@ public:
 			ITR_TRACE("Tab key is pressed!");
 			std::cout << "11";
 		}
-		m_Model->Draw();
+		
 
 	}
 
@@ -29,7 +29,7 @@ public:
 	}
 
 private:
-	std::unique_ptr<Intro::Model> m_Model;
+	
 };
 
 
@@ -39,7 +39,6 @@ public:
 	Sandbox() {
 		Intro::RendererLayer* rendererlayer = new Intro::RendererLayer(GetWindow());
 		PushLayer(rendererlayer);
-		PushLayer(new ExampleLayer);
 		Intro::ImGuiLayer* imguilayer = new Intro::ImGuiLayer();
 		imguilayer->SetRendererLayer(rendererlayer);
 		PushOverlay(imguilayer);

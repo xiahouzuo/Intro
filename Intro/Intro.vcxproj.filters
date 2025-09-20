@@ -110,6 +110,7 @@
       <Filter>Platform\Windows</Filter>
     </ClInclude>
     <ClInclude Include="src\itrpch.h" />
+    <ClInclude Include="src\Intro\Renderer\Texture.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Intro\Application.cpp">
@@ -155,5 +156,6 @@
       <Filter>Platform\Windows</Filter>
     </ClCompile>
     <ClCompile Include="src\itrpch.cpp" />
+    <ClCompile Include="src\Intro\Renderer\Texture.cpp" />
   </ItemGroup>
 </Project>

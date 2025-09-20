@@ -16,6 +16,7 @@ IncludeDir["glm"]      = "Intro/vendor/glm"
 IncludeDir["nlohmann"] = "Intro/vendor/nlohmann"
 IncludeDir["entt"]     = "Intro/vendor/entt"
 IncludeDir["Assimp"]   = "Intro/vendor/assimp/include"
+IncludeDir["stbimage"] = "Intro/vendor/stbimage"
 
 -- 引入子项目（如果这些 premake.module 存在）
 include "Intro/vendor/GLFW"
@@ -47,7 +48,8 @@ project "Intro"
         "Intro/vendor/glm",
         "Intro/vendor/nlohmann",
         "Intro/vendor/entt",
-        "Intro/vendor/assimp/include"
+        "Intro/vendor/assimp/include",
+        "Intro/vendor/stbimage"
     }
 
     links {
@@ -121,7 +123,8 @@ project "Sandbox"
         "Intro/vendor/glm",
         "%{IncludeDir.nlohmann}",
         "%{IncludeDir.Glad}",
-        "Intro/vendor/assimp/include"
+        "Intro/vendor/assimp/include",
+        "Intro/vendor/stbimage"
     }
 
     links { "Intro" }

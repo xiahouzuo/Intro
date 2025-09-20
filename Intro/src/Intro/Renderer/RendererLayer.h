@@ -7,6 +7,7 @@
 #include "Camera.h"
 #include "Shader.h"
 #include "Mesh.h"
+#include "Intro/Assert/Model.h"
 #include "ShapeGenerator.h"  // 添加包含
 #include <memory>
 #include <vector>  // 添加包含
@@ -44,6 +45,6 @@ namespace Intro {
         ShapeType m_CurrentShape = ShapeType::Null;
         std::vector<std::unique_ptr<Mesh>> m_Shapes;  // 存储所有形状
         std::unique_ptr<Mesh> m_TestMesh;  // 保留原测试三角形
-
+        std::unique_ptr<Model> m_Model;
     };
 }

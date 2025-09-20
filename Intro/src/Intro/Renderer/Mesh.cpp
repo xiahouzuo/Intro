@@ -4,11 +4,35 @@
 
 namespace Intro {
 	
-	void Mesh::Draw() const
+	void Mesh::Draw(Shader& shader) const
 	{
+		unsigned int diffuseNr = 1;
+		unsigned int specularNr = 1;
+
+		for (unsigned int i = 0;i < m_Textures.size();i++)
+		{
+			glActiveTexture(GL_TEXTURE0 + i);
+			std::string number;
+			std::string name = m_Textures[i]->GetType();
+			if (name == "texture_diffuse")
+				number = std::to_string(diffuseNr++);
+			else if (name == "texture_specular")
+				number = std::to_string(specularNr++);
+
+			shader.SetUniformInt((name + number).c_str(), i);
+			m_Textures[i]->Bind(i);
+		}
+
 		glBindVertexArray(VAO);
 		glDrawElements(GL_TRIANGLES, Indices.size(), GL_UNSIGNED_INT, 0);
 		glBindVertexArray(0);
+
+		for (unsigned int i = 0; i < m_Textures.size(); i++)
+		{
+			glActiveTexture(GL_TEXTURE0 + i);
+			glBindTexture(GL_TEXTURE_2D, 0);
+		}
+		glActiveTexture(GL_TEXTURE0);
 	}
 
 
