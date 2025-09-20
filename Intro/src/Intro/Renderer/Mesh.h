@@ -1,7 +1,7 @@
 #pragma once
 #include "Intro/Core.h"
 #include "Vertex.h"
-
+#include "glad/glad.h"
 //std
 #include <vector>
 
@@ -15,6 +15,12 @@ namespace Intro {
 			:Vertices(vertices), Indices(indices)
 		{
 			SetupMesh();
+		}
+
+		~Mesh() {
+			glDeleteVertexArrays(1, &VAO);
+			glDeleteBuffers(1, &VBO);
+			glDeleteBuffers(1, &IBO);
 		}
 
 		void Draw() const;

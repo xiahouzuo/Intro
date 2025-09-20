@@ -1,5 +1,5 @@
-prefix=E:/Libraries/Assimp
-exec_prefix=E:/Libraries/Assimp
+prefix=C:/Program Files (x86)/Assimp
+exec_prefix=C:/Program Files (x86)/Assimp
 libdir=
 sharedlibdir=
 includedir=

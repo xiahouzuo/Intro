@@ -25,7 +25,7 @@ public:
 
 	void OnEvent(Intro::Event& event) override
 	{
-		ITR_TRACE("{0}", event.ToString());
+		//ITR_TRACE("{0}", event.ToString());
 	}
 
 private:

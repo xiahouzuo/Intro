@@ -14,6 +14,9 @@ namespace Intro {
 		{ 
 			CompileShader(vertexShaderPath, fragmentShaderPath);
 		}
+
+		~Shader(){ glDeleteProgram(m_ShaderID); }
+
 		void Bind() const;
 		void UnBind() const;
 
