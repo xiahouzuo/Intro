@@ -2,6 +2,7 @@
 #include "Application.h"
 #include "Log.h"
 #include "Intro/Input.h"
+#include "Intro/ECS/Components.h"
 #include "glm/glm.hpp"
 #include <GLFW/glfw3.h>
 
@@ -10,6 +11,7 @@ namespace Intro {
 #define BIND_EVENT_FN(x) std::bind(&x, this, std::placeholders::_1)
 
 	Application* Application::s_Instance = nullptr;
+	SceneManager* Application::s_SceneManager = nullptr;
 
 	Application::Application() {
 		ITR_CORE_ASSERT(!s_Instance, "Application is already exists!");
@@ -17,10 +19,33 @@ namespace Intro {
 
 		m_Window = std::unique_ptr<Window>(Window::Create());
 		m_Window->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
+
+		s_SceneManager = new SceneManager;
+		//临时模型
+		std::shared_ptr<Model> model;
+		model = std::make_shared<Model>("E:/MyEngine/Intro/Intro/src/Intro/Assert/models/backpack.obj");
+		Scene& defaultScene = s_SceneManager->CreateScene<Scene>("defaultScene");
+		entt::entity entity = defaultScene.CreateEntity();
+		auto& transformComp = defaultScene.GetECS().AddComponent<TransformComponent>(entity,
+			glm::vec3(1.0f, 2.0f, 3.0f),  // 位置
+			glm::quat(1.0f, 0.0f, 0.0f, 0.0f),  // 旋转（单位四元数）
+			glm::vec3(1.0f, 1.0f, 1.0f)   // 缩放
+			);
+
+		auto& modelComp = defaultScene.GetECS().AddComponent<ModelComponent>(
+			entity,
+			model  // 模型资源
+		);
+
+		defaultScene.SetActive(true);
 	}
 
 	Application::~Application() {
-
+		if (s_SceneManager)
+		{
+			delete s_SceneManager;
+			s_SceneManager = nullptr;
+		}
 	}
 
 	void Application::PushLayer(Layer* layer)
@@ -43,6 +68,11 @@ namespace Intro {
 			float currentTime = (float)glfwGetTime(); // 假设使用 GLFW，需要包含 GLFW/glfw3.h
 			float deltaTime = currentTime - lastFrameTime;
 			lastFrameTime = currentTime;
+
+			if (s_SceneManager)
+			{
+				s_SceneManager->OnUpdate(deltaTime);
+			}
 
 			for (Layer* layer : m_LayerStack)
 				layer->OnUpdate(deltaTime); // 传递 deltaTime

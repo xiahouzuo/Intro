@@ -124,7 +124,8 @@ project "Sandbox"
         "%{IncludeDir.nlohmann}",
         "%{IncludeDir.Glad}",
         "Intro/vendor/assimp/include",
-        "Intro/vendor/stbimage"
+        "Intro/vendor/stbimage",
+        "Intro/vendor/entt"
     }
 
     links { "Intro" }

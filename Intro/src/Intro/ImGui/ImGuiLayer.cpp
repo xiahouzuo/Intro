@@ -57,8 +57,6 @@ namespace Intro {
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui::NewFrame();
 
-		if (m_RendererLayer)
-			DrawShapeSelector();
 
 		static bool show = true;
 		ImGui::ShowDemoWindow(&show);
@@ -67,19 +65,6 @@ namespace Intro {
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 	}
 
-	void ImGuiLayer::DrawShapeSelector()
-	{
-		ImGui::Begin("Shape Generator");
-
-		const char* shapeNames[] = { "Null", "Cube", "Sphere", "Plane" };
-		int current = (int)m_RendererLayer->GetCurrentType();
-		if (ImGui::Combo("shape type", &current, shapeNames, IM_ARRAYSIZE(shapeNames)))
-		{
-			m_RendererLayer->SetCurrentType((ShapeType)current);
-		}
-
-		ImGui::End();
-	}
 
 	void ImGuiLayer::OnEvent(Event& event)
 	{

@@ -5,6 +5,7 @@
 #include "Events/Event.h"
 #include "Events/ApplicationEvent.h"
 #include "LayerStack.h"
+#include "Intro/ECS/SceneManager.h"
 
 
 namespace Intro {
@@ -23,6 +24,11 @@ namespace Intro {
 
 		inline static Application& Get() { return *s_Instance; }
 		inline Window& GetWindow() { return *m_Window; }
+		inline static SceneManager& GetSceneManager()
+		{
+			ITR_CORE_ASSERT(!s_SceneManager, "SceneManager is null!");
+			return *s_SceneManager;
+		}
 
 	private:
 		bool OnWindowClose(WindowCloseEvent& e);
@@ -33,6 +39,8 @@ namespace Intro {
 
 	private:
 		static Application* s_Instance;
+
+		static SceneManager* s_SceneManager;
 	};
 
 	Application* CreateApplication();

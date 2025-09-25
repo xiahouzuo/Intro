@@ -1,6 +1,9 @@
 #include "itrpch.h"
 #include "RendererLayer.h"
 #include "imgui.h"
+#include "Intro/Application.h"
+#include "Intro/ECS/SceneManager.h"
+#include "RenderCommand.h"
 #include <glad/glad.h>
 
 
@@ -14,28 +17,28 @@ namespace Intro {
 		
 		m_Shader = std::make_unique<Shader>("E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.vert",
 			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.frag");
-		m_Model = std::make_unique<Intro::Model>("E:/MyEngine/Intro/Intro/src/Intro/Assert/models/backpack.obj");
-		InitShapes();
+		
 	}
 
-	void RendererLayer::SetCurrentType(ShapeType type)
+	RendererLayer::~RendererLayer()
 	{
-		m_CurrentShape = type;
+		m_Shader.reset();
 	}
 
-	void RendererLayer::InitShapes()
-	{
-		std::vector<std::shared_ptr<Texture>> emptyTexture = {};
 
-		auto [cubeVertices, cubeIndices] = ShapeGenerator::GenerateCube(1.0f);
-		m_Shapes.push_back(std::make_unique<Mesh>(cubeVertices, cubeIndices, emptyTexture));
+	//void RendererLayer::InitShapes()
+	//{
+	//	std::vector<std::shared_ptr<Texture>> emptyTexture = {};
 
-		auto [sphereVertices, sphereIndices] = ShapeGenerator::GenerateSphere(0.8f);
-		m_Shapes.push_back(std::make_unique<Mesh>(sphereVertices, sphereIndices, emptyTexture));
+	//	auto [cubeVertices, cubeIndices] = ShapeGenerator::GenerateCube(1.0f);
+	//	m_Shapes.push_back(std::make_unique<Mesh>(cubeVertices, cubeIndices, emptyTexture));
 
-		auto [planeVertices, planeIndices] = ShapeGenerator::GeneratePlane(2.0f, 2.0f);
-		m_Shapes.push_back(std::make_unique<Mesh>(planeVertices, planeIndices, emptyTexture));
-	}
+	//	auto [sphereVertices, sphereIndices] = ShapeGenerator::GenerateSphere(0.8f);
+	//	m_Shapes.push_back(std::make_unique<Mesh>(sphereVertices, sphereIndices, emptyTexture));
+
+	//	auto [planeVertices, planeIndices] = ShapeGenerator::GeneratePlane(2.0f, 2.0f);
+	//	m_Shapes.push_back(std::make_unique<Mesh>(planeVertices, planeIndices, emptyTexture));
+	//}
 
 	void RendererLayer::OnAttach()
 	{
@@ -46,6 +49,16 @@ namespace Intro {
 	{
 
 		m_Camera.OnUpdate(deltaTime);
+
+		auto& sceneMgr = Application::GetSceneManager();
+		auto* activeScene = sceneMgr.GetActiveScene();
+		if (!activeScene) return;
+
+		auto& ecs = activeScene->GetECS();
+
+		m_RenderableData.clear();
+		m_RenderableData = RenderSystem::GetRenderables(ecs);
+
 		glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -55,12 +68,21 @@ namespace Intro {
 		glm::mat4 view = m_Camera.GetViewMat();
 		glm::mat4 proj = m_Camera.GetProjectionMat();
 
-		m_Shader->SetUniformMat4("model", model);
 		m_Shader->SetUniformMat4("view", view);
 		m_Shader->SetUniformMat4("projection", proj);
-		m_Shader->SetUniformVec3("viewPos", m_Camera.Position);
 
-		switch (m_CurrentShape) {
+		for (const auto& r : m_RenderableData) {
+			// safety
+			if (!r.mesh) continue;
+
+			glm::mat4 model = r.transform.GetModelMatrix();
+			m_Shader->SetUniformMat4("model", model);
+
+			// 你的 DrawMesh 接口（负责绑定 VAO/材质并发 draw call）
+			RenderCommand::Draw(*r.mesh, *m_Shader);
+		}
+
+		/*switch (m_CurrentShape) {
 			case ShapeType::Null:
 				glClear(GL_COLOR_BUFFER_BIT);
 				break;
@@ -74,7 +96,7 @@ namespace Intro {
 				m_Shapes[2]->Draw(*m_Shader);
 				break;
 		}
-		m_Model->Draw(*m_Shader);
+		m_Model->Draw(*m_Shader);*/
 		m_Shader->UnBind();
 
 	}
@@ -92,11 +114,6 @@ namespace Intro {
 		return false;
 	}
 
-
-	void RendererLayer::UpdateCurrentShape()
-	{
-
-	}
 
 	
 }

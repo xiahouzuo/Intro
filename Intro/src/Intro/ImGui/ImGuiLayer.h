@@ -30,7 +30,6 @@ namespace Intro {
 		bool OnKeyTypedEvent(KeyTypedEvent& e);
 		bool OnWindowResizedEvent(WindowResizeEvent& e);
 
-		void DrawShapeSelector();
 	private:
 		float m_Time = 0.0f;
 
