@@ -4,7 +4,7 @@
 #include "Intro/Layer.h"
 #include "Intro/Window.h"
 #include "Intro/Events/ApplicationEvent.h"
-#include "Camera.h"
+#include "Intro/Renderer/Camears/FreeCamera.h"
 #include "Shader.h"
 #include "Mesh.h"
 #include "Intro/Assert/Model.h"
@@ -37,7 +37,7 @@ namespace Intro {
 
     private:
         const Window& m_Window;
-        Camera m_Camera;
+        FreeCamera m_Camera;
         std::unique_ptr<Shader> m_Shader;
 
         std::vector<RenderSystem::RenderableData> m_RenderableData;

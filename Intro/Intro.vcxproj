@@ -180,7 +180,9 @@
     <ClInclude Include="src\Intro\Log.h" />
     <ClInclude Include="src\Intro\Math\Transform.h" />
     <ClInclude Include="src\Intro\MouseButtonCodes.h" />
-    <ClInclude Include="src\Intro\Renderer\Camera.h" />
+    <ClInclude Include="src\Intro\Renderer\Camears\Camera.h" />
+    <ClInclude Include="src\Intro\Renderer\Camears\FreeCamera.h" />
+    <ClInclude Include="src\Intro\Renderer\Camears\OrbitCamera.h" />
     <ClInclude Include="src\Intro\Renderer\Mesh.h" />
     <ClInclude Include="src\Intro\Renderer\RenderCommand.h" />
     <ClInclude Include="src\Intro\Renderer\RendererLayer.h" />
@@ -202,7 +204,8 @@
     <ClCompile Include="src\Intro\Layer.cpp" />
     <ClCompile Include="src\Intro\LayerStack.cpp" />
     <ClCompile Include="src\Intro\Log.cpp" />
-    <ClCompile Include="src\Intro\Renderer\Camera.cpp" />
+    <ClCompile Include="src\Intro\Renderer\Camears\FreeCamera.cpp" />
+    <ClCompile Include="src\Intro\Renderer\Camears\OrbitCamera.cpp" />
     <ClCompile Include="src\Intro\Renderer\Mesh.cpp" />
     <ClCompile Include="src\Intro\Renderer\RenderCommand.cpp" />
     <ClCompile Include="src\Intro\Renderer\RendererLayer.cpp" />

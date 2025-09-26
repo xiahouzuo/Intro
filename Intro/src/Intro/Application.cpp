@@ -27,7 +27,7 @@ namespace Intro {
 		Scene& defaultScene = s_SceneManager->CreateScene<Scene>("defaultScene");
 		entt::entity entity = defaultScene.CreateEntity();
 		auto& transformComp = defaultScene.GetECS().AddComponent<TransformComponent>(entity,
-			glm::vec3(1.0f, 2.0f, 3.0f),  // 位置
+			glm::vec3(0.0f, 0.0f, 0.0f),  // 位置
 			glm::quat(1.0f, 0.0f, 0.0f, 0.0f),  // 旋转（单位四元数）
 			glm::vec3(1.0f, 1.0f, 1.0f)   // 缩放
 			);
@@ -38,6 +38,8 @@ namespace Intro {
 		);
 
 		defaultScene.SetActive(true);
+
+		s_SceneManager->SetActiveSceneByName("defaultScene");
 	}
 
 	Application::~Application() {

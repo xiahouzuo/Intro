@@ -52,8 +52,11 @@ namespace Intro {
 
 		auto& sceneMgr = Application::GetSceneManager();
 		auto* activeScene = sceneMgr.GetActiveScene();
-		if (!activeScene) return;
-
+		if (!activeScene)
+		{
+			ITR_ERROR("No active Scene");
+			return;
+		}
 		auto& ecs = activeScene->GetECS();
 
 		m_RenderableData.clear();

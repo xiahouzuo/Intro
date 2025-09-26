@@ -97,7 +97,7 @@
     <ClInclude Include="src\Intro\MouseButtonCodes.h">
       <Filter>Intro</Filter>
     </ClInclude>
-    <ClInclude Include="src\Intro\Renderer\Camera.h">
+    <ClInclude Include="src\Intro\Renderer\Camears\Camera.h">
       <Filter>Intro\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Intro\Renderer\Mesh.h">
@@ -134,6 +134,8 @@
       <Filter>Platform\Windows</Filter>
     </ClInclude>
     <ClInclude Include="src\itrpch.h" />
+    <ClInclude Include="src\Intro\Renderer\Camears\FreeCamera.h" />
+    <ClInclude Include="src\Intro\Renderer\Camears\OrbitCamera.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Intro\Application.cpp">
@@ -156,9 +158,6 @@
     </ClCompile>
     <ClCompile Include="src\Intro\Log.cpp">
       <Filter>Intro</Filter>
-    </ClCompile>
-    <ClCompile Include="src\Intro\Renderer\Camera.cpp">
-      <Filter>Intro\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Intro\Renderer\Mesh.cpp">
       <Filter>Intro\Renderer</Filter>
@@ -188,5 +187,7 @@
       <Filter>Platform\Windows</Filter>
     </ClCompile>
     <ClCompile Include="src\itrpch.cpp" />
+    <ClCompile Include="src\Intro\Renderer\Camears\FreeCamera.cpp" />
+    <ClCompile Include="src\Intro\Renderer\Camears\OrbitCamera.cpp" />
   </ItemGroup>
 </Project>
