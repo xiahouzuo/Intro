@@ -2,7 +2,7 @@
 #include "RenderCommand.h"
 
 #include "Mesh.h"
-#include "Intro/Assert/Model.h"
+#include "Intro/Renderer/Model.h"
 #include "Shader.h"
 namespace Intro {
 

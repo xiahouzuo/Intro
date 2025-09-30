@@ -125,7 +125,8 @@ project "Sandbox"
         "%{IncludeDir.Glad}",
         "Intro/vendor/assimp/include",
         "Intro/vendor/stbimage",
-        "Intro/vendor/entt"
+        "Intro/vendor/entt",
+        "Intro/vendor/imgui"
     }
 
     links { "Intro" }

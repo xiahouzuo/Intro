@@ -9,9 +9,11 @@ struct Transform
 {
 	glm::vec3 position = glm::vec3(0.0f);
 	glm::quat rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
-	glm::vec3 scale = glm::vec3(1.0f);
+	glm::vec3 scale    = glm::vec3(1.0f);
 
-	Transform(const glm::vec3& pos, const glm::quat& rotation, const glm::vec3& scale)
+	Transform(const glm::vec3& pos = glm::vec3(0.0f), 
+		const glm::quat& rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f),
+		const glm::vec3& scale = glm::vec3(1.0f))
 		:position(pos), rotation(rotation), scale(scale)
 	{
 

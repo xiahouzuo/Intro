@@ -24,7 +24,10 @@ project "ImGui"
         "backends/imgui_impl_glfw.cpp",
         "backends/imgui_impl_opengl3.h",
         "backends/imgui_impl_opengl3.cpp",
-        "backends/imgui_impl_opengl3_loader.h"
+        "backends/imgui_impl_opengl3_loader.h",
+
+        "misc/cpp/imgui_stdlib.h",    -- Í·ÎÄ¼ş
+        "misc/cpp/imgui_stdlib.cpp"
 	}
 
     IncludeDir = {}

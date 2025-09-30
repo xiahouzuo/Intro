@@ -2,7 +2,7 @@
 #pragma once
 #include "Intro/Math/Transform.h" // 你的 Transform 类
 #include "Intro/Renderer/Mesh.h"  // 你的 Mesh 类
-#include "Intro/Assert/Model.h"
+#include "Intro/Renderer/Model.h"
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
@@ -10,7 +10,7 @@
 
 namespace Intro {
 
-    // 如果没有包含 Model.h，可以用前向声明（shared_ptr 支持不完整类型）
+    
     class Model;
 
     // 变换组件：所有实体都可以有
@@ -24,6 +24,7 @@ namespace Intro {
             : transform(pos, rot, scale) {
         }
     };
+
 
     // 网格组件：只有需要被渲染的实体才有
     struct MeshComponent {
@@ -43,5 +44,15 @@ namespace Intro {
         }
     };
 
+    struct TagComponent
+    {
+        std::string Tag;
+
+        TagComponent() = default;
+        TagComponent(const TagComponent&) = default;
+        TagComponent(const std::string& tag)
+            : Tag(tag) {
+        }
+    };
 
 } // namespace Intro

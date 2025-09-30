@@ -1,6 +1,6 @@
 
 #include<Intro.h>
-#include"Intro/Assert/Model.h"
+#include"Intro/Renderer/Model.h"
 
 class ExampleLayer : public Intro::Layer
 {
@@ -39,7 +39,7 @@ public:
 	Sandbox() {
 		Intro::RendererLayer* rendererlayer = new Intro::RendererLayer(GetWindow());
 		PushLayer(rendererlayer);
-		Intro::ImGuiLayer* imguilayer = new Intro::ImGuiLayer();
+		Intro::ImGuiLayer* imguilayer = new Intro::ImGuiLayer(&Application::GetSceneManager());
 		imguilayer->SetRendererLayer(rendererlayer);
 		PushOverlay(imguilayer);
 	}
