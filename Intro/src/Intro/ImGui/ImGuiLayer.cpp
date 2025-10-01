@@ -11,7 +11,7 @@
 #include <unordered_set>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
-
+#include <glm/gtc/type_ptr.hpp>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -60,6 +60,8 @@ namespace Intro {
 		IM_ASSERT(window != nullptr);
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init("#version 410");
+
+		ImGuizmo::SetImGuiContext(ImGui::GetCurrentContext());
 
 		// 初始刷新实体列表
 		RefreshEntityList();
@@ -117,8 +119,15 @@ namespace Intro {
 			ShowImportModelWindow();
 		}
 
-		// 渲染UI
+		// 每帧初始化 ImGuizmo
+		ImGuizmo::BeginFrame();
+
+		// 绘制 gizmo（依赖 m_ViewportOffset, m_ViewportSize, m_SelectedEntity, m_RendererLayer）
+		RenderGizmo();
+
+		// 现在渲染 ImGui（原有）
 		ImGui::Render();
+
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 		// 处理多视口（保持与平台窗口同步）
@@ -209,15 +218,13 @@ namespace Intro {
 		ImGui::Begin("Viewport");
 
 		// 更新视口交互状态
+
 		m_ViewportHovered = ImGui::IsWindowHovered();
 		m_ViewportFocused = ImGui::IsWindowFocused();
 
-		// 获取视口可用区域尺寸
 		ImVec2 avail = ImGui::GetContentRegionAvail();
 		m_ViewportSize = avail;
-		m_ViewportOffset = ImGui::GetWindowPos();
 
-		// 防止尺寸为0导致的渲染错误
 		if (avail.x < 1.0f) avail.x = 1.0f;
 		if (avail.y < 1.0f) avail.y = 1.0f;
 
@@ -240,13 +247,24 @@ namespace Intro {
 
 		if (texID)
 		{
-			// 显示纹理（注意OpenGL纹理Y轴翻转，UV需调整）
+			// 关键修改：先显示图像，然后获取实际渲染区域的位置
 			ImGui::Image(texID, avail, ImVec2(0, 1), ImVec2(1, 0));
+
+			// 获取图像渲染后的实际位置和尺寸
+			ImVec2 imageMin = ImGui::GetItemRectMin();
+			ImVec2 imageMax = ImGui::GetItemRectMax();
+			m_ViewportOffset = imageMin;
+			m_ViewportSize = ImVec2(imageMax.x - imageMin.x, imageMax.y - imageMin.y);
 		}
 		else
 		{
 			ImGui::Text("No render target available");
-			ImGui::Dummy(avail); // 占位符
+			ImGui::Dummy(avail);
+			// 对于占位符也获取实际区域
+			ImVec2 dummyMin = ImGui::GetItemRectMin();
+			ImVec2 dummyMax = ImGui::GetItemRectMax();
+			m_ViewportOffset = dummyMin;
+			m_ViewportSize = ImVec2(dummyMax.x - dummyMin.x, dummyMax.y - dummyMin.y);
 		}
 
 		// 实体拖拽目标（支持将实体拖入视口）
@@ -263,6 +281,7 @@ namespace Intro {
 
 		ImGui::End();
 	}
+
 
 	/**
 	 * 显示实体管理器窗口
@@ -400,6 +419,34 @@ namespace Intro {
 			// m_SceneManager->ClearActiveScene(); // 实际项目中实现清空逻辑
 		}
 
+		ImGui::Separator();
+
+		// ==== Gizmo 操作 ====
+		ImGui::Text("Gizmo Operation:");
+		if (ImGui::RadioButton("Translate (W)", m_GizmoOperation == ImGuizmo::TRANSLATE))
+			m_GizmoOperation = ImGuizmo::TRANSLATE;
+		ImGui::SameLine();
+		if (ImGui::RadioButton("Rotate (E)", m_GizmoOperation == ImGuizmo::ROTATE))
+			m_GizmoOperation = ImGuizmo::ROTATE;
+		ImGui::SameLine();
+		if (ImGui::RadioButton("Scale (R)", m_GizmoOperation == ImGuizmo::SCALE))
+			m_GizmoOperation = ImGuizmo::SCALE;
+
+		ImGui::Spacing();
+
+		bool isLocal = (m_GizmoMode == ImGuizmo::LOCAL);
+		if (ImGui::Checkbox("Local Space", &isLocal))
+			m_GizmoMode = isLocal ? ImGuizmo::LOCAL : ImGuizmo::WORLD;
+
+		ImGui::Separator();
+
+		// ==== 快捷提示 ====
+		ImGui::TextUnformatted("Shortcuts:");
+		ImGui::BulletText("W - Translate");
+		ImGui::BulletText("E - Rotate");
+		ImGui::BulletText("R - Scale");
+		ImGui::BulletText("Ctrl - Snap (move/rotate/scale)");
+
 		ImGui::End();
 	}
 
@@ -468,19 +515,19 @@ namespace Intro {
 		auto* activeScene = m_SceneManager->GetActiveScene();
 		if (!activeScene) return false;
 
-		// 实际项目中应使用资源管理器加载模型
-		// 示例逻辑：
-		// auto model = ResourceManager::LoadModel(modelPath);
-		// if (model)
-		// {
-		//     entt::entity ent = activeScene->CreateEntity("Model Entity");
-		//     activeScene->GetECS().emplace<TransformComponent>(ent);
-		//     activeScene->GetECS().emplace<ModelComponent>(ent, model);
-		//     RefreshEntityList();
-		//     return true;
-		// }
+		auto model = std::make_shared<Model>(modelPath);
+		if (model->GetMeshes().empty()) {
+			ITR_ERROR("Failed to load model: {}", modelPath);
+			return false;
+		}
 
-		return false;
+		auto entity = activeScene->GetECS().CreateEntity();
+		activeScene->GetECS().GetRegistry().emplace<TagComponent>(entity, "model");
+		activeScene->GetECS().GetRegistry().emplace<TransformComponent>(entity);
+		activeScene->GetECS().GetRegistry().emplace<ModelComponent>(entity, model);
+
+		RefreshEntityList();
+		return true;
 	}
 
 	/**
@@ -556,34 +603,155 @@ namespace Intro {
 		}
 	}
 
+	void ImGuiLayer::RenderGizmo()
+	{
+		// 先做基础校验
+		if (m_SelectedEntity == entt::null || !m_RendererLayer || !m_SceneManager)
+			return;
+
+		auto* activeScene = m_SceneManager->GetActiveScene();
+		if (!activeScene) return;
+
+		auto& registry = activeScene->GetECS().GetRegistry();
+		if (!registry.valid(m_SelectedEntity)) { m_SelectedEntity = entt::null; return; }
+
+		// 获取相机矩阵（请保证这些方法与你的 Camera API 匹配）
+		// 如果你的 RendererLayer 返回的相机 API 名称不同，请替换下面两行。
+		auto camera = m_RendererLayer->GetCamera();
+		glm::mat4 view = camera.GetViewMat();
+		glm::mat4 proj = camera.GetProjectionMat();
+
+		// 视口 rect：使用内容区的屏幕坐标（m_ViewportOffset 应在 DrawViewport 中使用 GetCursorScreenPos() 设置）
+		float vpX = m_ViewportOffset.x;
+		float vpY = m_ViewportOffset.y;
+		float vpW = m_ViewportSize.x;
+		float vpH = m_ViewportSize.y;
+
+		if (vpW <= 0.0f || vpH <= 0.0f)
+			return;
+
+		// 准备 ImGuizmo 绘制目标与 rect
+		ImGuizmo::SetDrawlist();
+		ImGuizmo::SetRect(vpX, vpY, vpW, vpH);
+
+		// 读取实体 TransformComponent（你的结构名与字段名已在文件中使用）
+		auto& tc = registry.get<TransformComponent>(m_SelectedEntity);
+		glm::vec3 pos = tc.transform.position;
+		glm::quat rot = tc.transform.rotation;
+		glm::vec3 scale = tc.transform.scale;
+
+		// 构建模型矩阵（glm 默认列主序，符合 ImGuizmo 的期望）
+		glm::mat4 model = glm::translate(glm::mat4(1.0f), pos) *
+			glm::toMat4(rot) *
+			glm::scale(glm::mat4(1.0f), scale);
+
+		// 备份原始数据以便后续对比（避免每帧写回造成不必要更新）
+		glm::vec3 origPos = pos;
+		glm::quat origRot = rot;
+		glm::vec3 origScale = scale;
+
+		// Snap 支持：按住 Ctrl 开启（你也可以把 snap 状态暴露为成员变量）
+		bool useSnap = ImGui::IsKeyDown(ImGuiKey_LeftCtrl) || ImGui::IsKeyDown(ImGuiKey_RightCtrl);
+		float snapVals[3] = { 0.5f, 0.5f, 0.5f }; // 默认 snap 步进，可改为成员变量或 UI 控件
+
+		// 如果需要根据你的引擎坐标空间/矩阵布局转置，请在此处处理（大多数情况下 glm 列主序无需转置）
+		// 例如： if (engineUsesRowMajor) model = glm::transpose(model);
+
+		// 调用 ImGuizmo::Manipulate（它会修改 model）
+		ImGuizmo::Manipulate(glm::value_ptr(view),
+			glm::value_ptr(proj),
+			m_GizmoOperation,
+			m_GizmoMode,
+			glm::value_ptr(model),
+			nullptr,
+			useSnap ? snapVals : nullptr);
+
+		// 立即更新 gizmo 状态，事件拦截可以直接查询 ImGuizmo::IsUsing()/IsOver()
+		m_IsUsingGizmo = ImGuizmo::IsUsing();
+		m_IsOverGizmo = ImGuizmo::IsOver();
+
+		// 分解模型矩阵，读取位置/旋转（欧拉度）/缩放
+		glm::vec3 translation, rotationDeg, newScale;
+		ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(model),
+			glm::value_ptr(translation),
+			glm::value_ptr(rotationDeg),
+			glm::value_ptr(newScale));
+
+		// ImGuizmo 返回的 rotation 是 欧拉角（度），转换成弧度并构造四元数
+		glm::vec3 rotationRad = glm::radians(rotationDeg);
+		glm::quat newRot = glm::quat(rotationRad); // glm::quat expects radians
+
+		// 使用容差判断是否有显著变化（避免浮点微动写回）
+		const float eps = 1e-4f;
+		bool posChanged = glm::length2(translation - origPos) > eps;
+		bool scaleChanged = glm::length2(newScale - origScale) > eps;
+
+		// 对旋转比较：比较欧拉角差的平方和（避免四元数符号反转影响）
+		glm::vec3 origEuler = glm::eulerAngles(origRot);
+		glm::vec3 newEuler = glm::eulerAngles(newRot);
+		bool rotChanged = glm::length2(newEuler - origEuler) > eps;
+
+		if (posChanged || rotChanged || scaleChanged)
+		{
+			// 写回 TransformComponent（按需可在这里应用轴锁定或 pivot 偏移逻辑）
+			tc.transform.position = translation;
+			tc.transform.rotation = newRot;
+			tc.transform.scale = newScale;
+
+			// 同步到编辑器面板（Inspector）
+			m_TransformEditor.position = tc.transform.position;
+			m_TransformEditor.rotation = tc.transform.rotation;
+			m_TransformEditor.scale = tc.transform.scale;
+			m_EulerAngles = glm::degrees(glm::eulerAngles(tc.transform.rotation));
+		}
+	}
+
+
+
 	// 事件处理函数（保持原有事件系统逻辑，不修改返回值）
 	bool ImGuiLayer::OnMouseButtonPressedEvent(MouseButtonPressedEvent& e)
 	{
 		ImGuiIO& io = ImGui::GetIO();
 		io.MouseDown[e.GetMouseButton()] = true;
-		return false; // 不拦截事件，按原有系统逻辑传播
+
+		// 直接询问 ImGuizmo（不要仅用 m_IsUsingGizmo，因为它在 RenderGizmo 后更新）
+		bool gizmoUsing = ImGuizmo::IsUsing();
+		bool gizmoOver = ImGuizmo::IsOver();
+
+		return io.WantCaptureMouse || gizmoUsing || gizmoOver;
 	}
 
 	bool ImGuiLayer::OnMouseButtonReleasedEvent(MouseButtonReleasedEvent& e)
 	{
 		ImGuiIO& io = ImGui::GetIO();
 		io.MouseDown[e.GetMouseButton()] = false;
-		return false;
+
+		bool gizmoUsing = ImGuizmo::IsUsing();
+		bool gizmoOver = ImGuizmo::IsOver();
+
+		return io.WantCaptureMouse || gizmoUsing || gizmoOver;
 	}
 
 	bool ImGuiLayer::OnMouseMovedEvent(MouseMovedEvent& e)
 	{
 		ImGuiIO& io = ImGui::GetIO();
 		io.MousePos = ImVec2(e.GetX(), e.GetY());
-		return false;
+
+		bool gizmoUsing = ImGuizmo::IsUsing();
+		bool gizmoOver = ImGuizmo::IsOver();
+
+		return io.WantCaptureMouse || gizmoUsing || gizmoOver;
 	}
+
 
 	bool ImGuiLayer::OnMouseScrolledEvent(MouseScrolledEvent& e)
 	{
 		ImGuiIO& io = ImGui::GetIO();
 		io.MouseWheelH += e.GetXOffset();
-		io.MouseWheel += e.GetYOffset();
-		return false;
+		io.MouseWheel += e.GetYOffset();  // 更新ImGui滚轮状态
+
+		// 滚轮事件：ImGui捕获时阻止传递
+		return io.WantCaptureMouse;
 	}
 
 	bool ImGuiLayer::OnKeyPressedEvent(KeyPressedEvent& e)
@@ -597,28 +765,35 @@ namespace Intro {
 		io.KeyAlt = io.KeysDown[GLFW_KEY_LEFT_ALT] || io.KeysDown[GLFW_KEY_RIGHT_ALT];
 		io.KeySuper = io.KeysDown[GLFW_KEY_LEFT_SUPER] || io.KeysDown[GLFW_KEY_RIGHT_SUPER];
 
-		return false;
+		// 键盘按下事件：ImGui捕获时阻止传递
+		return io.WantCaptureKeyboard;
 	}
 
 	bool ImGuiLayer::OnKeyReleasedEvent(KeyReleasedEvent& e)
 	{
 		ImGuiIO& io = ImGui::GetIO();
-		io.KeysDown[e.GetKeyCode()] = false;
-		return false;
+		io.KeysDown[e.GetKeyCode()] = false;  // 更新ImGui按键状态
+
+		// 键盘释放事件：ImGui捕获时阻止传递
+		return io.WantCaptureKeyboard;
 	}
 
 	bool ImGuiLayer::OnKeyTypedEvent(KeyTypedEvent& e)
 	{
 		ImGuiIO& io = ImGui::GetIO();
-		io.AddInputCharacter(e.GetKeyCode());
-		return false;
+		io.AddInputCharacter(e.GetKeyCode());  // 传递输入字符给ImGui
+
+		// 字符输入事件：ImGui捕获时阻止传递
+		return io.WantCaptureKeyboard;
 	}
 
 	bool ImGuiLayer::OnWindowResizedEvent(WindowResizeEvent& e)
 	{
 		ImGuiIO& io = ImGui::GetIO();
 		io.DisplaySize = ImVec2(e.GetWidth(), e.GetHeight());
-		io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+		io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);  // 更新ImGui窗口尺寸
+
+		// 窗口 resize 事件通常需要传递给其他层（如RendererLayer更新视口），保持返回false
 		return false;
 	}
 
@@ -628,6 +803,8 @@ namespace Intro {
 	void ImGuiLayer::OnEvent(Event& event)
 	{
 		EventDispatcher dispatcher(event);
+		std::cout << "imguilayer event" << std::endl;
+
 		// 绑定事件处理函数（使用原有系统的BIND_EVENT_FN宏）
 		dispatcher.Dispatch<MouseButtonPressedEvent>(BIND_EVENT_FN(ImGuiLayer::OnMouseButtonPressedEvent));
 		dispatcher.Dispatch<MouseButtonReleasedEvent>(BIND_EVENT_FN(ImGuiLayer::OnMouseButtonReleasedEvent));

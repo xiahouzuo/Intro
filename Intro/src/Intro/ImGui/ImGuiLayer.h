@@ -2,6 +2,8 @@
 #pragma once
 #include "Intro/Layer.h"
 #include "imgui.h"
+#include <glm/glm.hpp>
+#include "ImGuizmo.h"
 #include "Intro/ECS/SceneManager.h"
 #include "Intro/Events/ApplicationEvent.h"
 #include "Intro/Events/KeyEvent.h"
@@ -59,6 +61,9 @@ namespace Intro {
 		void UpdateSelectedEntityTransform(); // 应用变换到选中实体
 		void SyncTransformEditor();       // 同步选中实体的变换到编辑器
 
+		//imguizmo
+		void RenderGizmo();
+
 	private:
 		float m_Time = 0.0f;              // 用于计算帧率等时间相关逻辑
 
@@ -81,6 +86,14 @@ namespace Intro {
 		std::vector<entt::entity> m_CachedEntities; // 缓存的实体列表（减少ECS查询次数）
 		Transform m_TransformEditor;      // 变换编辑器的临时数据（编辑时不直接修改实体）
 		glm::vec3 m_EulerAngles;          // 欧拉角（用于显示旋转，内部仍用四元数计算）
+
+		// ImGuizmo 状态
+		ImGuizmo::OPERATION m_GizmoOperation = ImGuizmo::TRANSLATE;
+		ImGuizmo::MODE m_GizmoMode = ImGuizmo::WORLD;
+		bool m_IsUsingGizmo = false;       // 当前 gizmo 是否被拖动
+		bool m_IsOverGizmo = false;        // 鼠标是否悬停在 gizmo 上
+
+		
 	};
 
 }

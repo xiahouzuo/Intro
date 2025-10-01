@@ -237,6 +237,8 @@ namespace Intro {
     void RendererLayer::OnEvent(Event& event)
     {
         EventDispatcher dispatcher(event);
+        std::cout << "rendererlayer event" << std::endl;
+
         // 绑定窗口尺寸变化事件处理函数
         dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(RendererLayer::OnWindowResized));
     }

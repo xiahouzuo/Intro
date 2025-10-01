@@ -9,6 +9,12 @@ namespace Intro {
 	Texture::Texture(const std::string& filepath)
 		:m_FilePath(filepath), m_LocalBuffer(nullptr), m_Width(0), m_Height(0), m_BPP(0)
 	{
+
+		if (!std::filesystem::exists(filepath)) {
+			std::cout << "纹理文件不存在: " << filepath << std::endl;
+			throw std::runtime_error("纹理文件不存在: " + filepath);
+		}
+
 		glGenTextures(1, &m_TextureID);
 		
 		stbi_set_flip_vertically_on_load(true);  // 关键修复：翻转纹理坐标

@@ -3,12 +3,14 @@
 #include "Intro/Renderer/RendererLayer.h"
 #include <iostream>
 
+
 namespace Intro {
 
     Model::Model(const std::string& modelPath) : m_ModelPath(modelPath)
     {
-        size_t lastSlash = modelPath.find_last_of("/\\");
-        m_Directory = (lastSlash == std::string::npos) ? "" : modelPath.substr(0, lastSlash);
+        // 使用 filesystem 正确处理路径
+        std::filesystem::path path(modelPath);
+        m_Directory = path.parent_path().string();
 
         Assimp::Importer importer;
         const aiScene* scene = importer.ReadFile(
@@ -20,7 +22,7 @@ namespace Intro {
         );
 
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-            std::cerr << "Assimp加载失败: " << importer.GetErrorString() << std::endl;
+            std::cerr << "Assimp加载错误: " << importer.GetErrorString() << std::endl;
             return;
         }
 
@@ -95,12 +97,57 @@ namespace Intro {
             aiString str;
             mat->GetTexture(type, i, &str);
 
-            std::string filename = std::string(str.C_Str());
-            filename = m_Directory + "/" + filename;
+            std::string texturePath = std::string(str.C_Str());
 
-            auto texture = std::make_shared<Texture>(filename);
-            texture->SetType(typeName);
-            textures.push_back(texture);
+            // 改进的路径处理逻辑
+            std::filesystem::path textureFilePath(texturePath);
+
+            std::string fullPath;
+
+            // 检查是否是绝对路径
+            if (textureFilePath.is_absolute()) {
+                fullPath = texturePath;
+            }
+            // 检查是否已经是相对模型目录的路径
+            else if (std::filesystem::exists(m_Directory + "/" + texturePath)) {
+                fullPath = m_Directory + "/" + texturePath;
+            }
+            else {
+                // 尝试在模型目录中查找
+                std::filesystem::path modelDir(m_Directory);
+                auto potentialPath = modelDir / textureFilePath;
+                if (std::filesystem::exists(potentialPath)) {
+                    fullPath = potentialPath.string();
+                }
+                else {
+                    // 如果还找不到，尝试使用文件名在模型目录中搜索
+                    std::string fileName = textureFilePath.filename().string();
+                    auto searchPath = modelDir / fileName;
+                    if (std::filesystem::exists(searchPath)) {
+                        fullPath = searchPath.string();
+                    }
+                    else {
+                        std::cout << "无法找到纹理文件: " << texturePath << std::endl;
+                        std::cout << "尝试的路径: " << (modelDir / textureFilePath).string() << std::endl;
+                        continue;
+                    }
+                }
+            }
+
+            // 标准化路径（移除多余的 ../ ./ 等）
+            std::filesystem::path normalizedPath = std::filesystem::path(fullPath).lexically_normal();
+            fullPath = normalizedPath.string();
+
+            std::cout << "加载纹理: " << fullPath << std::endl;
+
+            try {
+                auto texture = std::make_shared<Texture>(fullPath);
+                texture->SetType(typeName);
+                textures.push_back(texture);
+            }
+            catch (const std::exception& e) {
+                std::cerr << "纹理加载失败: " << fullPath << " - " << e.what() << std::endl;
+            }
         }
         return textures;
     }
@@ -110,5 +157,4 @@ namespace Intro {
             mesh->Draw(shader);
         }
     }
-
 }

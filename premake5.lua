@@ -17,6 +17,7 @@ IncludeDir["nlohmann"] = "Intro/vendor/nlohmann"
 IncludeDir["entt"]     = "Intro/vendor/entt"
 IncludeDir["Assimp"]   = "Intro/vendor/assimp/include"
 IncludeDir["stbimage"] = "Intro/vendor/stbimage"
+IncludeDir["ImGuizmo"] = "Intro/vendor/imguizmo"
 
 -- 引入子项目（如果这些 premake.module 存在）
 include "Intro/vendor/GLFW"
@@ -36,7 +37,9 @@ project "Intro"
 
     files { 
         "%{prj.name}/src/**.h",
-        "%{prj.name}/src/**.cpp"
+        "%{prj.name}/src/**.cpp",
+        "%{prj.name}/vendor/imguizmo/*.h",
+        "%{prj.name}/vendor/imguizmo/*.cpp"
     }
 
     includedirs {
@@ -49,7 +52,8 @@ project "Intro"
         "Intro/vendor/nlohmann",
         "Intro/vendor/entt",
         "Intro/vendor/assimp/include",
-        "Intro/vendor/stbimage"
+        "Intro/vendor/stbimage",
+        "Intro/vendor/imguizmo"
     }
 
     links {
@@ -126,7 +130,8 @@ project "Sandbox"
         "Intro/vendor/assimp/include",
         "Intro/vendor/stbimage",
         "Intro/vendor/entt",
-        "Intro/vendor/imgui"
+        "Intro/vendor/imgui",
+        "Intro/vendor/imguizmo"
     }
 
     links { "Intro" }
