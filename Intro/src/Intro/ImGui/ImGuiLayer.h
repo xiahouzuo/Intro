@@ -45,6 +45,8 @@ namespace Intro {
 
 
 	private:
+		bool ShouldBlockEvent();
+
 		// UI绘制函数
 		void DrawMenuBar();               // 绘制菜单栏（文件、创建等）
 		void DrawDockSpaceHost();         // 创建停靠容器（布局基础）

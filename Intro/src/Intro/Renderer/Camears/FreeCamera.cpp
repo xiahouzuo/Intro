@@ -2,6 +2,8 @@
 #include "FreeCamera.h"
 #include <glm/gtc/matrix_transform.hpp>
 #include "Intro/Input.h"
+#include "Intro/Application.h"
+#include "Intro/ImGui/ImGuiLayer.h"
 #include "Intro/MouseButtonCodes.h"
 #include "Intro/KeyCodes.h"
 
@@ -22,9 +24,15 @@ namespace Intro {
 
     void FreeCamera::OnUpdate(float deltaTime)
     {
-        // 鼠标控制视角（按住鼠标右键或左键按你喜好）
-        if (Input::IsMouseButtonPressed(ITR_MOUSE_BUTTON_1))
+        Application& app = Application::Get();
+
+        // --- 鼠标视角控制 ---
+        bool mouseButtonDown = Input::IsMouseButtonPressed(ITR_MOUSE_BUTTON_1);
+        bool allowMouseControl = mouseButtonDown && app.IsViewportHovered() && !app.IsUsingGizmo();
+
+        if (allowMouseControl)
         {
+            // 原有的鼠标控制逻辑
             float currentX = Input::GetMouseX();
             float currentY = Input::GetMouseY();
 
@@ -35,7 +43,7 @@ namespace Intro {
             }
 
             float xoffset = currentX - m_LastMouseX;
-            float yoffset = m_LastMouseY - currentY; // inverted Y
+            float yoffset = m_LastMouseY - currentY;
 
             m_LastMouseX = currentX;
             m_LastMouseY = currentY;
@@ -46,29 +54,34 @@ namespace Intro {
             m_Yaw += xoffset;
             m_Pitch += yoffset;
 
-            // 限制俯仰角
             if (m_Pitch > 89.0f) m_Pitch = 89.0f;
             if (m_Pitch < -89.0f) m_Pitch = -89.0f;
 
             UpdateCameraVectors();
         }
-        else {
+        else
+        {
             m_FirstMouse = true;
             m_LastMouseX = Input::GetMouseX();
             m_LastMouseY = Input::GetMouseY();
         }
 
-        // 键盘移动
-        float velocity = m_MovementSpeed * deltaTime;
-        if (Input::IsKeyPressed(ITR_KEY_W)) Position += m_Front * velocity;
-        if (Input::IsKeyPressed(ITR_KEY_S)) Position -= m_Front * velocity;
-        if (Input::IsKeyPressed(ITR_KEY_D)) Position += m_Right * velocity;
-        if (Input::IsKeyPressed(ITR_KEY_A)) Position -= m_Right * velocity;
-        if (Input::IsKeyPressed(ITR_KEY_E)) Position += m_WorldUp * velocity;
-        if (Input::IsKeyPressed(ITR_KEY_Q)) Position -= m_WorldUp * velocity;
+        // --- 键盘移动 ---
+        bool allowKeyboardControl = app.IsViewportFocused() && !app.IsUsingGizmo();
 
-        // 可选：Shift 加速
-        if (Input::IsKeyPressed(ITR_KEY_LEFT_SHIFT)) Position += m_Front * (m_MovementSpeed * 2.0f * deltaTime);
+        if (allowKeyboardControl)
+        {
+            float velocity = m_MovementSpeed * deltaTime;
+            if (Input::IsKeyPressed(ITR_KEY_W)) Position += m_Front * velocity;
+            if (Input::IsKeyPressed(ITR_KEY_S)) Position -= m_Front * velocity;
+            if (Input::IsKeyPressed(ITR_KEY_D)) Position += m_Right * velocity;
+            if (Input::IsKeyPressed(ITR_KEY_A)) Position -= m_Right * velocity;
+            if (Input::IsKeyPressed(ITR_KEY_E)) Position += m_WorldUp * velocity;
+            if (Input::IsKeyPressed(ITR_KEY_Q)) Position -= m_WorldUp * velocity;
+
+            if (Input::IsKeyPressed(ITR_KEY_LEFT_SHIFT))
+                Position += m_Front * (m_MovementSpeed * 2.0f * deltaTime);
+        }
     }
 
     void FreeCamera::UpdateCameraVectors()

@@ -138,7 +138,7 @@ namespace Intro {
             std::filesystem::path normalizedPath = std::filesystem::path(fullPath).lexically_normal();
             fullPath = normalizedPath.string();
 
-            std::cout << "¼ÓÔØÎÆÀí: " << fullPath << std::endl;
+            
 
             try {
                 auto texture = std::make_shared<Texture>(fullPath);

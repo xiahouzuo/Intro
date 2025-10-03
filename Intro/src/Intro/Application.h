@@ -29,6 +29,16 @@ namespace Intro {
 			ITR_CORE_ASSERT(!s_SceneManager, "SceneManager is null!");
 			return *s_SceneManager;
 		}
+		
+		bool IsViewportHovered() const { return m_ViewportHovered; }
+		bool IsViewportFocused() const { return m_ViewportFocused; }
+		bool IsUsingGizmo() const { return m_IsUsingGizmo; }
+
+		void SetViewportState(bool hovered, bool focused, bool usingGizmo) {
+			m_ViewportHovered = hovered;
+			m_ViewportFocused = focused;
+			m_IsUsingGizmo = usingGizmo;
+		}
 
 	private:
 		bool OnWindowClose(WindowCloseEvent& e);
@@ -36,6 +46,10 @@ namespace Intro {
 		std::unique_ptr<Window> m_Window;
 		bool m_Running = true;
 		LayerStack m_LayerStack;
+
+		bool m_ViewportHovered = false;
+		bool m_ViewportFocused = false;
+		bool m_IsUsingGizmo = false;
 
 	private:
 		static Application* s_Instance;
