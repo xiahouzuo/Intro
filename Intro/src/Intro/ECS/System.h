@@ -3,6 +3,7 @@
 
 #include "ECS.h"
 #include "Components.h"
+#include "Intro/Renderer/RenderQueue.h"
 #include <vector>
 #include <memory>
 #include "Intro/Core.h"
@@ -48,6 +49,25 @@ namespace Intro {
             }
 
             return result;
+        }
+
+        static void CollectRenderables(ECS& ecs, RenderQueue& queue, const glm::vec3& cameraPos) {
+            auto meshView = ecs.GetRegistry().view<TransformComponent, MeshComponent, MaterialComponent>();
+            for (auto [entity, tf, meshComp, matComp] : meshView.each()) {
+                if (!meshComp.mesh || !matComp.material) continue;
+                RenderItem item;
+                item.mesh = meshComp.mesh;
+                item.material = matComp.material;
+                item.transform = tf.transform.GetModelMatrix(); // 假设Transform有GetMatrix方法
+                item.transparent = matComp.Transparent;
+                if (item.transparent)
+                    queue.transparent.push_back(item);
+                else
+                    queue.opaque.push_back(item);
+            }
+
+
+            // 处理ModelComponent（略，类似MeshComponent）
         }
     };
 

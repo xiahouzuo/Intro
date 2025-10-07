@@ -2,6 +2,7 @@
 #include "Intro/Core.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "Intro/Log.h"
 #include "Intro/Window.h"
 
 namespace Intro {
@@ -10,22 +11,32 @@ namespace Intro {
     {
     public:
         Camera() = default;
-        Camera(const Window& window) { AspectRatio = (float)window.GetWidth() / (float)window.GetHeight(); }
+        Camera(const Window& window) { SetAspectRatio((float)window.GetWidth() / (float)window.GetHeight()); }
         virtual ~Camera() = default;
 
         // 矩阵接口（派生类必须实现）
         virtual glm::mat4 GetViewMat() const = 0;
+        virtual glm::vec3 GetPosition() const = 0;
         virtual glm::mat4 GetProjectionMat() const {
             return glm::perspective(glm::radians(Fov), AspectRatio, NearClip, FarClip);
         }
 
-        // 运行时调用（处理输入/移动/旋转）
         virtual void OnUpdate(float deltaTime) = 0;
 
         // 常用设置
         float GetAspectRatio() { return AspectRatio; }
-        void SetAspectRatio(float ar) { AspectRatio = ar; }
+
         void SetFov(float f) { Fov = f; }
+
+        void SetAspectRatio(float ar) {
+            if (std::isnan(ar) || std::isinf(ar) || ar <= 0.0f) {
+                ITR_CORE_WARN("Invalid aspect ratio ({0}), using default 16:9", ar);
+                AspectRatio = 16.0f / 9.0f;
+            }
+            else {
+                AspectRatio = ar;
+            }
+        }
 
         float AspectRatio = 16.0f / 9.0f;
     protected:

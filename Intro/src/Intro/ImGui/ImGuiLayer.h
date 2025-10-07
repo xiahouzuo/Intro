@@ -95,7 +95,12 @@ namespace Intro {
 		bool m_IsUsingGizmo = false;       // 当前 gizmo 是否被拖动
 		bool m_IsOverGizmo = false;        // 鼠标是否悬停在 gizmo 上
 
-		
+		//更名
+		bool m_IsEditingTag = false;
+		entt::entity m_EditingEntity = entt::null;
+		char m_TagEditBuffer[256] = { 0 };
+		bool m_ShouldOpenRenamePopup = false;
+		bool m_RenamePopupNeedsFocus = false;
 	};
 
 }

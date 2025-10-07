@@ -1,12 +1,13 @@
 // ImGuiLayer.cpp
 #include "itrpch.h"
+#include "Intro/Application.h"
+#include "Intro/ECS/Components.h"
+#include "Intro/Renderer/ShapeGenerator.h"
 #include "ImGuiLayer.h"
 #include "Platform/OpenGL/ImGuiOpenGLRenderer.h"
 #include "backends/imgui_impl_opengl3.h"
 #include "backends/imgui_impl_glfw.h"
 #include "misc/cpp/imgui_stdlib.h"
-#include "Intro/Application.h"
-#include "Intro/ECS/Components.h"
 #include "entt/entt.hpp"
 #include <unordered_set>
 #include <glm/gtc/quaternion.hpp>
@@ -123,6 +124,93 @@ namespace Intro {
 		{
 			ShowImportModelWindow();
 		}
+
+		// --- 改名弹窗处理（如果正在编辑 Tag） ---
+		if (m_IsEditingTag && m_EditingEntity != entt::null)
+		{
+			auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
+			if (!activeScene) {
+				// 场景丢失或切换，取消编辑状态
+				m_IsEditingTag = false;
+				m_EditingEntity = entt::null;
+				m_ShouldOpenRenamePopup = false;
+				m_RenamePopupNeedsFocus = false;
+			}
+			else {
+				// 如果上一帧请求打开 popup，则在这一帧打开（只调用一次）
+				if (m_ShouldOpenRenamePopup) {
+					ImGui::OpenPopup("Rename Entity");
+					m_ShouldOpenRenamePopup = false;
+					// m_RenamePopupNeedsFocus 已在触发处设为 true
+				}
+
+				// 现在尝试显示 modal（如果尚未打开则 BeginPopupModal 返回 false）
+				if (ImGui::BeginPopupModal("Rename Entity", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+				{
+					ImGui::Text("Enter new name:");
+					ImGui::Separator();
+
+					ImGui::SetNextItemWidth(350.0f);
+
+					// 仅在弹窗刚打开时设置键盘焦点一次，避免干扰鼠标点击
+					if (m_RenamePopupNeedsFocus) {
+						ImGui::SetKeyboardFocusHere();
+						m_RenamePopupNeedsFocus = false;
+					}
+
+					// InputText：保留 EnterReturnsTrue 支持按回车提交
+					bool enterPressed = ImGui::InputText("##TagInput", m_TagEditBuffer, sizeof(m_TagEditBuffer), ImGuiInputTextFlags_EnterReturnsTrue);
+
+					// OK / Cancel 按钮现在会响应鼠标点击
+					if (enterPressed || ImGui::Button("OK", ImVec2(120, 0)))
+					{
+						std::string newTag = std::string(m_TagEditBuffer);
+						// trim
+						auto trim = [](std::string& s) {
+							s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+							s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
+							};
+						trim(newTag);
+
+						if (!newTag.empty()) {
+							auto& ecs = activeScene->GetECS();
+							if (ecs.HasComponent<TagComponent>(m_EditingEntity)) {
+								ecs.GetComponent<TagComponent>(m_EditingEntity).Tag = newTag;
+							}
+							else {
+								ecs.AddComponent<TagComponent>(m_EditingEntity, newTag);
+							}
+
+							if (m_EditingEntity == m_SelectedEntity) {
+								m_SelectedEntityName = newTag;
+							}
+
+							// 同步列表以确保显示一致
+							RefreshEntityList();
+						}
+
+						// 关闭弹窗与编辑状态
+						m_IsEditingTag = false;
+						m_EditingEntity = entt::null;
+						ImGui::CloseCurrentPopup();
+					}
+
+					ImGui::SameLine();
+					if (ImGui::Button("Cancel", ImVec2(120, 0)))
+					{
+						// 取消编辑
+						m_IsEditingTag = false;
+						m_EditingEntity = entt::null;
+						m_RenamePopupNeedsFocus = false;
+						ImGui::CloseCurrentPopup();
+					}
+
+					ImGui::EndPopup();
+				} // if BeginPopupModal
+			} // else activeScene valid
+		} // if m_IsEditingTag
+
+
 
 		// 现在渲染 ImGui（原有）
 		ImGui::Render();
@@ -273,63 +361,61 @@ namespace Intro {
 	 * 显示实体管理器窗口
 	 * 功能：列出场景中所有实体、支持选择和拖拽
 	 */
-	void ImGuiLayer::ShowEntityManagerWindow()
-	{
+	void ImGuiLayer::ShowEntityManagerWindow() {
 		ImGui::Begin("Entity Manager");
 
-		// 刷新实体列表按钮
-		if (ImGui::Button("Refresh List"))
-		{
+		if (ImGui::Button("Refresh List")) {
 			RefreshEntityList();
 		}
-
 		ImGui::Separator();
 
-		// 获取当前活动场景
 		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
-		if (!activeScene)
-		{
-			ImGui::Text("No active scene");
-			ImGui::End();
-			return;
-		}
+		if (!activeScene) { ImGui::Text("No active scene"); ImGui::End(); return; }
 
-		// 显示实体列表
 		auto& registry = activeScene->GetECS().GetRegistry();
-		for (auto entity : m_CachedEntities)
-		{
-			if (!registry.valid(entity)) // 过滤无效实体
-				continue;
+		for (auto entity : m_CachedEntities) {
+			if (!registry.valid(entity)) continue;
 
-			// 生成实体名称（优先显示标签，否则显示ID）
-			std::string name = "Entity " + std::to_string((uint32_t)entity);
-			if (registry.any_of<TagComponent>(entity))
-			{
+			// 获取名称
+			std::string name = "Entity " + std::to_string(static_cast<uint32_t>(entity));
+			if (registry.any_of<TagComponent>(entity)) {
 				name = registry.get<TagComponent>(entity).Tag;
 			}
 
-			// 显示实体项（支持选择）
-			ImGui::PushID((uint32_t)entity); // 唯一ID，避免UI冲突
-			if (ImGui::Selectable(name.c_str(), m_SelectedEntity == entity))
-			{
+			ImGui::PushID(static_cast<uint32_t>(entity));
+			bool isSelected = (m_SelectedEntity == entity);
+			if (ImGui::Selectable(name.c_str(), isSelected)) {
 				m_SelectedEntity = entity;
 				m_SelectedEntityName = name;
 			}
 
-			// 支持拖拽实体
-			if (ImGui::BeginDragDropSource())
-			{
-				uint32_t entId = (uint32_t)entity;
-				ImGui::SetDragDropPayload("ENTITY_PAYLOAD", &entId, sizeof(uint32_t));
-				ImGui::Text(name.c_str());
-				ImGui::EndDragDropSource();
+			// 更稳健的右键处理：检测当前项是否被右键点击
+			if (ImGui::IsItemClicked(1)) { // right click
+				m_EditingEntity = entity;
+				m_IsEditingTag = true;
+				// 初始化缓冲区
+				if (registry.any_of<TagComponent>(entity)) {
+					std::string t = registry.get<TagComponent>(entity).Tag;
+					std::strncpy(m_TagEditBuffer, t.c_str(), sizeof(m_TagEditBuffer) - 1);
+				}
+				else {
+					std::strncpy(m_TagEditBuffer, name.c_str(), sizeof(m_TagEditBuffer) - 1);
+				}
+				m_TagEditBuffer[sizeof(m_TagEditBuffer) - 1] = '\0';
+
+				// 请求在下一帧打开 modal，并在打开后设置焦点一次
+				m_ShouldOpenRenamePopup = true;
+				m_RenamePopupNeedsFocus = true;
 			}
+
 
 			ImGui::PopID();
 		}
 
 		ImGui::End();
 	}
+
+
 
 	/**
 	 * 显示实体检查器窗口
@@ -523,29 +609,63 @@ namespace Intro {
 	void ImGuiLayer::CreatePrimitive(ShapeType type)
 	{
 		if (!m_SceneManager) return;
-
 		auto* activeScene = m_SceneManager->GetActiveScene();
 		if (!activeScene) return;
 
-		// 实际项目中使用ShapeGenerator创建网格
-		// 示例逻辑：
-		// std::string name;
-		// std::shared_ptr<Mesh> mesh;
-		// switch(type)
-		// {
-		//     case ShapeType::Cube:
-		//         name = "Cube";
-		//         mesh = ShapeGenerator::CreateCube();
-		//         break;
-		//     // 其他类型...
-		// }
-		// if (mesh)
-		// {
-		//     entt::entity ent = activeScene->CreateEntity(name);
-		//     activeScene->GetECS().emplace<TransformComponent>(ent);
-		//     activeScene->GetECS().emplace<MeshComponent>(ent, mesh);
-		//     RefreshEntityList();
-		// }
+		std::string name = "Primitive";
+		std::vector<Vertex> verts;
+		std::vector<unsigned int> inds;
+
+		// 生成网格顶点与索引（根据 ShapeType 调用 ShapeGenerator）
+		switch (type)
+		{
+		case ShapeType::Cube:
+		{
+			auto pair = ShapeGenerator::GenerateCube(1.0f); // 假设返回 std::pair<std::vector<Vertex>, std::vector<unsigned int>>
+			verts = std::move(pair.first);
+			inds = std::move(pair.second);
+			name = "Cube";
+			break;
+		}
+		case ShapeType::Sphere:
+		{
+			auto pair = ShapeGenerator::GenerateSphere(0.5f, 36, 18);
+			verts = std::move(pair.first);
+			inds = std::move(pair.second);
+			name = "Sphere";
+			break;
+		}
+		case ShapeType::Plane:
+		{
+			auto pair = ShapeGenerator::GeneratePlane(2.0f, 2.0f, 1, 1);
+			verts = std::move(pair.first);
+			inds = std::move(pair.second);
+			name = "Plane";
+			break;
+		}
+		default:
+			return;
+		}
+
+		// 使用空的纹理列表创建 Mesh（你的 Mesh 构造需要 textures 参数）
+		std::vector<std::shared_ptr<Intro::Texture>> emptyTextures;
+		auto meshPtr = std::make_shared<Intro::Mesh>(std::move(verts), std::move(inds), std::move(emptyTextures));
+
+		// 将 Mesh 放入 ECS（假设 activeScene->GetECS().CreateEntity() 返回 entt::entity
+		// 且 registry.emplace<T>(entity, ...) 可用）
+		auto entity = activeScene->GetECS().CreateEntity();
+		auto& registry = activeScene->GetECS().GetRegistry();
+
+		// 添加组件 —— 按你工程中组件的定义来写（下面使用了你之前给出的 MeshComponent 定义）
+		registry.emplace<TagComponent>(entity, name);
+		registry.emplace<TransformComponent>(entity); // 默认变换
+		registry.emplace<MeshComponent>(entity, meshPtr);
+
+		// 若有默认材质/渲染组件，也可在这里附加
+		// registry.emplace<MaterialComponent>(entity, defaultMaterialPtr);
+
+		// 如果你的编辑器有刷新实体列表的函数，调用它（方法名可能不同）
+		RefreshEntityList();
 	}
 
 	/**
@@ -766,7 +886,7 @@ namespace Intro {
 		}
 
 		// 键盘按下事件：ImGui捕获时阻止传递
-		return io.WantCaptureKeyboard;
+		return ShouldBlockEvent();
 	}
 
 	bool ImGuiLayer::OnKeyReleasedEvent(KeyReleasedEvent& e)
@@ -775,16 +895,16 @@ namespace Intro {
 		io.KeysDown[e.GetKeyCode()] = false;  // 更新ImGui按键状态
 
 		// 键盘释放事件：ImGui捕获时阻止传递
-		return io.WantCaptureKeyboard;
+		return ShouldBlockEvent();
 	}
 
 	bool ImGuiLayer::OnKeyTypedEvent(KeyTypedEvent& e)
 	{
-		ImGuiIO& io = ImGui::GetIO();
-		io.AddInputCharacter(e.GetKeyCode());  // 传递输入字符给ImGui
+		//ImGuiIO& io = ImGui::GetIO();
+		//io.AddInputCharacter(e.GetKeyCode());  // 传递输入字符给ImGui
 
 		// 字符输入事件：ImGui捕获时阻止传递
-		return io.WantCaptureKeyboard;
+		return ShouldBlockEvent();
 	}
 
 	bool ImGuiLayer::OnWindowResizedEvent(WindowResizeEvent& e)
@@ -794,7 +914,7 @@ namespace Intro {
 		io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);  // 更新ImGui窗口尺寸
 
 		// 窗口 resize 事件通常需要传递给其他层（如RendererLayer更新视口），保持返回false
-		return io.WantCaptureKeyboard;
+		return ShouldBlockEvent();
 	}
 
 	/**

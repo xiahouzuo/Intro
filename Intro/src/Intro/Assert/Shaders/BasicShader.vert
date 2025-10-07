@@ -1,17 +1,29 @@
-#version 330 core
+#version 420 core
 
-layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aNormal;
-layout (location = 2) in vec2 aTexCoords;
+// 手动嵌入 camera.glsl 内容（替代 #include）
+layout(std140, binding = 0) uniform CameraUBO {
+    mat4 u_View;
+    mat4 u_Proj;
+    vec4 u_ViewPos; // xyz pos, w unused
+    float u_Time;
+    vec3 _pad1;
+};
 
-out vec2 TexCoords;
+layout(location = 0) in vec3 aPos;
+layout(location = 1) in vec3 aNormal;
+layout(location = 2) in vec2 aUV;
 
-uniform mat4 model;
-uniform mat4 view;
-uniform mat4 projection;
+out vec3 vFragPos;
+out vec3 vNormal;
+out vec2 vUV;
 
-void main()
-{
-    TexCoords = aTexCoords;
-    gl_Position = projection * view * model * vec4(aPos, 1.0);
+uniform mat4 u_Transform; // object model
+
+void main() {
+    vec4 worldPos = u_Transform * vec4(aPos, 1.0);
+    vFragPos = worldPos.xyz;
+    mat3 normalMat = transpose(inverse(mat3(u_Transform)));
+    vNormal = normalize(normalMat * aNormal);
+    vUV = aUV;
+    gl_Position = u_Proj * u_View * worldPos; // 使用 CameraUBO 中的 u_Proj 和 u_View
 }

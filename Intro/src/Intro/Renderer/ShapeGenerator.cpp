@@ -10,35 +10,60 @@ namespace Intro {
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
 
-        float halfSize = size / 2.0f;
+        float h = size / 2.0f;
 
-        // 立方体8个顶点
+        // 每个面独立 4 顶点（24 顶点），每顶点都有正确的法线
         vertices = {
-            // 前面
-            Vertex(glm::vec3(-halfSize, -halfSize,  halfSize), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 0.0f)),
-            Vertex(glm::vec3(halfSize, -halfSize,  halfSize), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 0.0f)),
-            Vertex(glm::vec3(halfSize,  halfSize,  halfSize), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(1.0f, 1.0f)),
-            Vertex(glm::vec3(-halfSize,  halfSize,  halfSize), glm::vec3(0.0f, 0.0f, 1.0f), glm::vec2(0.0f, 1.0f)),
+            // front (+Z)
+            Vertex(glm::vec3(-h, -h,  h), glm::vec3(0,0,1), glm::vec2(0,0)),
+            Vertex(glm::vec3(h, -h,  h), glm::vec3(0,0,1), glm::vec2(1,0)),
+            Vertex(glm::vec3(h,  h,  h), glm::vec3(0,0,1), glm::vec2(1,1)),
+            Vertex(glm::vec3(-h,  h,  h), glm::vec3(0,0,1), glm::vec2(0,1)),
 
-            // 后面
-            Vertex(glm::vec3(-halfSize, -halfSize, -halfSize), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 0.0f)),
-            Vertex(glm::vec3(halfSize, -halfSize, -halfSize), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(1.0f, 0.0f)),
-            Vertex(glm::vec3(halfSize,  halfSize, -halfSize), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(1.0f, 1.0f)),
-            Vertex(glm::vec3(-halfSize,  halfSize, -halfSize), glm::vec3(0.0f, 0.0f, -1.0f), glm::vec2(0.0f, 1.0f)),
+            // back (-Z)
+            Vertex(glm::vec3(h, -h, -h), glm::vec3(0,0,-1), glm::vec2(0,0)),
+            Vertex(glm::vec3(-h, -h, -h), glm::vec3(0,0,-1), glm::vec2(1,0)),
+            Vertex(glm::vec3(-h,  h, -h), glm::vec3(0,0,-1), glm::vec2(1,1)),
+            Vertex(glm::vec3(h,  h, -h), glm::vec3(0,0,-1), glm::vec2(0,1)),
+
+            // left (-X)
+            Vertex(glm::vec3(-h, -h, -h), glm::vec3(-1,0,0), glm::vec2(0,0)),
+            Vertex(glm::vec3(-h, -h,  h), glm::vec3(-1,0,0), glm::vec2(1,0)),
+            Vertex(glm::vec3(-h,  h,  h), glm::vec3(-1,0,0), glm::vec2(1,1)),
+            Vertex(glm::vec3(-h,  h, -h), glm::vec3(-1,0,0), glm::vec2(0,1)),
+
+            // right (+X)
+            Vertex(glm::vec3(h, -h,  h), glm::vec3(1,0,0), glm::vec2(0,0)),
+            Vertex(glm::vec3(h, -h, -h), glm::vec3(1,0,0), glm::vec2(1,0)),
+            Vertex(glm::vec3(h,  h, -h), glm::vec3(1,0,0), glm::vec2(1,1)),
+            Vertex(glm::vec3(h,  h,  h), glm::vec3(1,0,0), glm::vec2(0,1)),
+
+            // top (+Y)
+            Vertex(glm::vec3(-h,  h,  h), glm::vec3(0,1,0), glm::vec2(0,0)),
+            Vertex(glm::vec3(h,  h,  h), glm::vec3(0,1,0), glm::vec2(1,0)),
+            Vertex(glm::vec3(h,  h, -h), glm::vec3(0,1,0), glm::vec2(1,1)),
+            Vertex(glm::vec3(-h,  h, -h), glm::vec3(0,1,0), glm::vec2(0,1)),
+
+            // bottom (-Y)
+            Vertex(glm::vec3(-h, -h, -h), glm::vec3(0,-1,0), glm::vec2(0,0)),
+            Vertex(glm::vec3(h, -h, -h), glm::vec3(0,-1,0), glm::vec2(1,0)),
+            Vertex(glm::vec3(h, -h,  h), glm::vec3(0,-1,0), glm::vec2(1,1)),
+            Vertex(glm::vec3(-h, -h,  h), glm::vec3(0,-1,0), glm::vec2(0,1)),
         };
 
-        // 立方体6个面，每个面2个三角形
+        // 每面 2 三角形，保证 CCW（面朝外）
         indices = {
-            0, 1, 2, 2, 3, 0, // 前面
-            4, 5, 6, 6, 7, 4, // 后面
-            4, 0, 3, 3, 7, 4, // 左面
-            1, 5, 6, 6, 2, 1, // 右面
-            3, 2, 6, 6, 7, 3, // 顶面
-            4, 5, 1, 1, 0, 4  // 底面
+            0,1,2, 2,3,0,       // front
+            4,5,6, 6,7,4,       // back
+            8,9,10, 10,11,8,    // left
+            12,13,14, 14,15,12, // right
+            16,17,18, 18,19,16, // top
+            20,21,22, 22,23,20  // bottom
         };
 
         return { vertices, indices };
     }
+
 
     std::pair<std::vector<Vertex>, std::vector<unsigned int>> ShapeGenerator::GenerateSphere(float radius, int sectors, int stacks)
     {
@@ -127,12 +152,14 @@ namespace Intro {
                 unsigned int bottomLeft = (y + 1) * vertexCountX + x;
                 unsigned int bottomRight = bottomLeft + 1;
 
+                // 从上方 (normal = +Y) 看为 CCW
                 indices.push_back(topLeft);
-                indices.push_back(bottomLeft);
                 indices.push_back(topRight);
-                indices.push_back(topRight);
-                indices.push_back(bottomLeft);
                 indices.push_back(bottomRight);
+
+                indices.push_back(topLeft);
+                indices.push_back(bottomRight);
+                indices.push_back(bottomLeft);
             }
         }
 

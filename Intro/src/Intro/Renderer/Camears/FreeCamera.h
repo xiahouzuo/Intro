@@ -13,6 +13,10 @@ namespace Intro {
         FreeCamera(const Window& window);
 
         glm::mat4 GetViewMat() const;
+        glm::vec3 GetPosition() const
+        {
+            return Position;
+        }
         void OnUpdate(float deltaTime);
 
         // tuning

@@ -3,14 +3,20 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include "Intro/Input.h"
 #include "Intro/MouseButtonCodes.h"
+#include "Intro/KeyCodes.h"
+#include "Intro/Application.h" // 新增：用于窗口状态判断
 
 namespace Intro {
 
     OrbitCamera::OrbitCamera(const Window& window)
         : Camera(window)
     {
-        // 初始化距离与位置
         Distance = glm::length(Position - Target);
+        // 新增：根据初始位置计算初始角度（参考FreeCamera的角度初始化）
+        glm::vec3 direction = glm::normalize(Position - Target);
+        m_Pitch = glm::degrees(glm::asin(direction.y));
+        m_Yaw = glm::degrees(glm::atan(direction.z, direction.x));
+
         m_LastMouseX = Input::GetMouseX();
         m_LastMouseY = Input::GetMouseY();
     }
@@ -20,9 +26,15 @@ namespace Intro {
         return glm::lookAt(Position, Target, Up);
     }
 
-    void OrbitCamera::OnUpdate(float /*deltaTime*/)
+    void OrbitCamera::OnUpdate(float deltaTime)
     {
-        if (Input::IsMouseButtonPressed(ITR_MOUSE_BUTTON_1))
+        Application& app = Application::Get(); // 新增：获取应用实例
+
+        // 鼠标旋转控制（参考FreeCamera的交互条件）
+        bool mouseButtonDown = Input::IsMouseButtonPressed(ITR_MOUSE_BUTTON_1);
+        bool allowMouseControl = mouseButtonDown && app.IsViewportHovered() && !app.IsUsingGizmo();
+
+        if (allowMouseControl)
         {
             float currentX = Input::GetMouseX();
             float currentY = Input::GetMouseY();
@@ -34,21 +46,57 @@ namespace Intro {
             }
 
             float xoffset = currentX - m_LastMouseX;
-            float yoffset = m_LastMouseY - currentY; // inverted Y
+            float yoffset = m_LastMouseY - currentY; // Y轴反转（和FreeCamera一致）
 
             m_LastMouseX = currentX;
             m_LastMouseY = currentY;
 
             RotateCamera(xoffset, yoffset);
         }
-        else {
-            // 避免下一次按下时跳变
+        else
+        {
+            // 重置鼠标状态（参考FreeCamera）
             m_FirstMouse = true;
             m_LastMouseX = Input::GetMouseX();
             m_LastMouseY = Input::GetMouseY();
         }
 
-        // 可扩展：滚轮缩放、平移 (中键拖拽) 等
+        // 新增：键盘控制（参考FreeCamera的键盘交互逻辑）
+        bool allowKeyboardControl = app.IsViewportFocused() && !app.IsUsingGizmo();
+        if (allowKeyboardControl)
+        {
+            float zoomVelocity = m_ZoomSpeed * deltaTime;
+            float targetVelocity = m_TargetMovementSpeed * deltaTime;
+
+            // 左Shift加速（和FreeCamera一致）
+            if (Input::IsKeyPressed(ITR_KEY_LEFT_SHIFT)) {
+                zoomVelocity *= 2.0f;
+                targetVelocity *= 2.0f;
+            }
+
+            // 缩放控制（W/S调整距离）
+            if (Input::IsKeyPressed(ITR_KEY_W))
+                SetDistance(Distance - zoomVelocity);
+            if (Input::IsKeyPressed(ITR_KEY_S))
+                SetDistance(Distance + zoomVelocity);
+
+            // 目标移动控制（参考FreeCamera的WASDQE逻辑）
+            glm::vec3 forward = glm::normalize(Target - Position);
+            glm::vec3 right = glm::normalize(glm::cross(forward, Up));
+
+            if (Input::IsKeyPressed(ITR_KEY_A))
+                Target -= right * targetVelocity;
+            if (Input::IsKeyPressed(ITR_KEY_D))
+                Target += right * targetVelocity;
+            if (Input::IsKeyPressed(ITR_KEY_Q))
+                Target -= Up * targetVelocity;
+            if (Input::IsKeyPressed(ITR_KEY_E))
+                Target += Up * targetVelocity;
+            if (Input::IsKeyPressed(ITR_KEY_R))
+                Target += forward * targetVelocity;
+            if (Input::IsKeyPressed(ITR_KEY_F))
+                Target -= forward * targetVelocity;
+        }
     }
 
     void OrbitCamera::RotateCamera(float xoffset, float yoffset)
@@ -56,23 +104,24 @@ namespace Intro {
         xoffset *= m_MouseSensitivity;
         yoffset *= m_MouseSensitivity;
 
-        glm::vec3 forward = glm::normalize(Target - Position);
+        // 更新角度（参考FreeCamera的角度计算）
+        m_Yaw += xoffset;
+        m_Pitch += yoffset;
 
-        // 绕世界Y轴旋转（水平）
-        {
-            glm::mat4 rotateY = glm::rotate(glm::mat4(1.0f), glm::radians(xoffset), Up);
-            forward = glm::vec3(rotateY * glm::vec4(forward, 0.0f));
-        }
+        // 限制俯仰角（避免翻转，和FreeCamera一致）
+        if (m_Pitch > 89.0f)
+            m_Pitch = 89.0f;
+        if (m_Pitch < -89.0f)
+            m_Pitch = -89.0f;
 
-        // 绕右轴旋转（俯仰）
-        {
-            glm::vec3 right = glm::normalize(glm::cross(forward, Up));
-            glm::mat4 rotateX = glm::rotate(glm::mat4(1.0f), glm::radians(yoffset), right);
-            forward = glm::vec3(rotateX * glm::vec4(forward, 0.0f));
-        }
+        // 根据角度计算相机位置（参考FreeCamera的向量更新逻辑）
+        glm::vec3 direction;
+        direction.x = cos(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
+        direction.y = sin(glm::radians(m_Pitch));
+        direction.z = sin(glm::radians(m_Yaw)) * cos(glm::radians(m_Pitch));
+        direction = glm::normalize(direction);
 
-        // 更新位置，保持距离
-        Position = Target - forward * Distance;
+        Position = Target + direction * Distance; // 围绕目标旋转
     }
 
 } // namespace Intro

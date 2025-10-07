@@ -5,6 +5,7 @@
 #include "Intro/Window.h"
 #include "Intro/Events/ApplicationEvent.h"
 #include "Intro/Renderer/Camears/FreeCamera.h"
+#include "UniformBuffers.h"
 #include "Shader.h"
 #include "Mesh.h"
 #include "Intro/Renderer/Model.h"
@@ -78,5 +79,12 @@ namespace Intro {
             GLboolean depthTest;       // Éî¶È²âÊÔ×´Ì¬
             GLboolean cullFace;        // ±³ÃæÌÞ³ý×´Ì¬
         } m_SavedState;
+
+        std::unique_ptr<CameraUBO> m_CameraUBO;
+        std::unique_ptr<LightsUBO> m_LightsUBO;
+        RenderQueue m_RenderQueue;
+        float m_Time = 0.0f;
+
+        std::shared_ptr<Material> m_DefaultMaterial;//Ä¬ÈÏ²ÄÖÊ
     };
 }

@@ -5,6 +5,7 @@
 #include "Intro/Application.h"
 #include "Intro/ECS/SceneManager.h"
 #include "RenderCommand.h"
+#include "UBO.h"
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
@@ -44,7 +45,20 @@ namespace Intro {
 
         // 创建初始FBO
         CreateFramebuffer(m_ViewportWidth, m_ViewportHeight);
+
+        m_CameraUBO = std::make_unique<CameraUBO>();
+        m_LightsUBO = std::make_unique<LightsUBO>();
+
+        auto shaderCopy = std::make_unique<Shader>(*m_Shader); // 复制原 Shader 的内容
+
+        // 2. 将副本的所有权转移给 shared_ptr
+        std::shared_ptr<Shader> sharedShader = std::move(shaderCopy);
+
+        // 3. 用 shared_ptr 构造 Material（原 m_Shader 仍有效）
+        m_DefaultMaterial = std::make_shared<Material>(sharedShader);
+        m_DefaultMaterial->SetShininess(32.0f);
     }
+
 
     /**
      * 创建离屏渲染帧缓冲（FBO）
@@ -131,7 +145,7 @@ namespace Intro {
 
         // 重建FBO并更新相机纵横比
         CreateFramebuffer(width, height);
-        m_Camera.AspectRatio = (float)width / (float)height;
+        m_Camera.SetAspectRatio((float)width / (float)height);
     }
 
     /**
@@ -177,60 +191,92 @@ namespace Intro {
      * 每帧渲染场景
      * 流程：更新相机 -> 获取待渲染数据 -> 渲染到FBO -> 恢复状态
      */
-    void RendererLayer::OnUpdate(float deltaTime)
-    {
-        // 更新相机（处理输入、更新视图矩阵）
+    void RendererLayer::OnUpdate(float deltaTime) {
+        // 1. 更新相机和时间
         m_Camera.OnUpdate(deltaTime);
+        m_Time += deltaTime;
 
-        // 获取当前活动场景
+        // 2. 获取活动场景和 ECS
         auto& sceneMgr = Application::GetSceneManager();
         auto* activeScene = sceneMgr.GetActiveScene();
-        if (!activeScene)
-        {
+        if (!activeScene) {
             ITR_ERROR("No active Scene");
             return;
         }
         auto& ecs = activeScene->GetECS();
 
-        // 从ECS获取待渲染数据（包含网格和变换）
-        m_RenderableData.clear();
-        m_RenderableData = RenderSystem::GetRenderables(ecs);
+        // 3. 更新 UBO（相机和光源数据上传到 GPU）
+        m_CameraUBO->OnUpdate(m_Camera, m_Time); // 相机 UBO：视图、投影、相机位置
+        m_LightsUBO->OnUpdate(ecs);             // 光源 UBO：收集场景中所有光源
 
-        // 若FBO有效，渲染到FBO
-        if (m_FBO)
-        {
-            BindRenderState();
+        // 4. 收集并排序渲染项（替代原来的 m_RenderableData）
+        m_RenderQueue.Clear();
+        // 收集所有可渲染物体（MeshComponent 和 ModelComponent）
+        RenderSystem::CollectRenderables(ecs, m_RenderQueue, m_Camera.GetPosition()); // 假设相机有 Position 成员
+        // 按相机位置排序（不透明：前到后；透明：后到前）
+        m_RenderQueue.Sort(m_Camera.GetPosition());
 
-            // 清除颜色和深度缓冲
+        // 5. 若 FBO 有效，渲染到 FBO
+        if (m_FBO) {
+            BindRenderState(); // 你的 FBO 绑定逻辑
+
+            // 清除缓冲
             glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
             glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-            // 绑定着色器并设置相机矩阵
-            m_Shader->Bind();
-            glm::mat4 view = m_Camera.GetViewMat();
-            glm::mat4 proj = m_Camera.GetProjectionMat();
-            m_Shader->SetUniformMat4("view", view);
-            m_Shader->SetUniformMat4("projection", proj);
+            // 6. 渲染不透明物体（按材质分组，减少状态切换）
+            glEnable(GL_DEPTH_TEST);
+            glDisable(GL_BLEND); // 不透明物体不需要混合
+            std::shared_ptr<Material> lastMaterial = nullptr;
 
-            // 遍历并渲染所有可渲染对象
-            for (const auto& r : m_RenderableData)
-            {
-                if (!r.mesh) continue; // 跳过无效网格
+            for (const auto& item : m_RenderQueue.opaque) {
+                // 使用默认材质（如果物体没有指定材质）
+                auto& material = item.material ? item.material : m_DefaultMaterial;
 
-                // 设置模型矩阵（每个对象的变换）
-                glm::mat4 model = r.transform.GetModelMatrix();
-                m_Shader->SetUniformMat4("model", model);
+                // 材质变化时才重新绑定（优化）
+                if (material != lastMaterial) {
+                    material->Bind(); // 绑定材质（包含 shader 和纹理）
+                    lastMaterial = material;
+                }
+
+                // 设置模型矩阵（每个物体的世界变换）
+                // 注意：这里直接使用 item.transform（已在 CollectRenderables 中计算好）
+                material->GetShader()->SetUniformMat4("u_Transform", item.transform);
+
                 // 绘制网格
-                RenderCommand::Draw(*r.mesh, *m_Shader);
+                if (item.mesh) {
+                    RenderCommand::Draw(*item.mesh, *material->GetShader());
+                }
             }
 
-            // 解绑着色器
-            m_Shader->UnBind();
-            // 恢复渲染状态
-            UnbindRenderState();
+            // 7. 渲染透明物体（后到前排序，开启混合）
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA); // 标准 alpha 混合
+            glDepthMask(GL_FALSE); // 透明物体不写入深度缓冲（避免遮挡后续透明物体）
+
+            for (const auto& item : m_RenderQueue.transparent) {
+                auto& material = item.material ? item.material : m_DefaultMaterial;
+                material->Bind();
+
+                // 设置模型矩阵
+                material->GetShader()->SetUniformMat4("u_Transform", item.transform);
+
+                // 绘制网格
+                if (item.mesh) {
+                    RenderCommand::Draw(*item.mesh, *material->GetShader());
+                }
+            }
+
+            // 8. 恢复渲染状态
+            glDepthMask(GL_TRUE); // 恢复深度写入
+            glDisable(GL_BLEND);
+            lastMaterial = nullptr; // 重置材质绑定状态
+
+            // 解绑着色器和 FBO
+            m_Shader->UnBind(); // 或使用最后绑定的材质 shader 解绑
+            UnbindRenderState(); // 你的 FBO 解绑逻辑
         }
     }
-
     /**
      * 事件处理（仅处理窗口尺寸变化）
      */
@@ -249,7 +295,7 @@ namespace Intro {
      */
     bool RendererLayer::OnWindowResized(WindowResizeEvent& e)
     {
-        m_Camera.AspectRatio = (float)e.GetWidth() / (float)e.GetHeight();
+        m_Camera.SetAspectRatio((float)e.GetWidth() / (float)e.GetHeight());
         return false; // 不拦截事件，按原有系统逻辑传播
     }
 }
