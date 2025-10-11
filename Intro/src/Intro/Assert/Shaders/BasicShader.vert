@@ -1,13 +1,12 @@
 #version 420 core
 
-// 手动嵌入 camera.glsl 内容（替代 #include）
 layout(std140, binding = 0) uniform CameraUBO {
-    mat4 u_View;
-    mat4 u_Proj;
-    vec4 u_ViewPos; // xyz pos, w unused
-    float u_Time;
-    vec3 _pad1;
-};
+    mat4 view;
+    mat4 proj;
+    vec4 viewPos;
+    float time;
+    vec3 pad;
+} camera;
 
 layout(location = 0) in vec3 aPos;
 layout(location = 1) in vec3 aNormal;
@@ -22,8 +21,11 @@ uniform mat4 u_Transform; // object model
 void main() {
     vec4 worldPos = u_Transform * vec4(aPos, 1.0);
     vFragPos = worldPos.xyz;
+    
+    // 法线变换
     mat3 normalMat = transpose(inverse(mat3(u_Transform)));
     vNormal = normalize(normalMat * aNormal);
+    
     vUV = aUV;
-    gl_Position = u_Proj * u_View * worldPos; // 使用 CameraUBO 中的 u_Proj 和 u_View
+    gl_Position = camera.proj * camera.view * worldPos;
 }

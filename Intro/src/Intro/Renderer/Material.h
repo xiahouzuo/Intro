@@ -13,17 +13,31 @@ namespace Intro {
 
         void Bind() const {
             m_Shader->Bind();
-            // 绑定纹理到固定槽位
+
+            // 绑定纹理并设置 uniform
             if (m_Diffuse) {
                 glActiveTexture(GL_TEXTURE0);
                 m_Diffuse->Bind();
+                m_Shader->SetUniformInt("material_diffuse", 0);
             }
+            else {
+                // 如果没有漫反射纹理，可能需要设置一个默认值
+                // 或者确保着色器能处理没有纹理的情况
+            }
+
             if (m_Specular) {
                 glActiveTexture(GL_TEXTURE1);
                 m_Specular->Bind();
+                m_Shader->SetUniformInt("material_specular", 1);
             }
+            else {
+                // 如果没有高光纹理，设置一个默认值
+                m_Shader->SetUniformInt("material_specular", 1); // 仍然绑定到纹理单元1
+                // 你可能需要一个默认的白色纹理
+            }
+
             // 设置材质属性
-            m_Shader->SetUniformFloat("material.shininess", m_Shininess);
+            m_Shader->SetUniformFloat("material_shininess", m_Shininess);
         }
 
         void SetDiffuse(std::shared_ptr<Texture> texture) { m_Diffuse = std::move(texture); }

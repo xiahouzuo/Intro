@@ -57,6 +57,13 @@ namespace Intro {
         // 3. 用 shared_ptr 构造 Material（原 m_Shader 仍有效）
         m_DefaultMaterial = std::make_shared<Material>(sharedShader);
         m_DefaultMaterial->SetShininess(32.0f);
+
+        // 在RendererLayer::OnAttach中添加
+        m_Shader->Bind();
+        m_Shader->SetUniformInt("material_diffuse", 0);
+        m_Shader->SetUniformInt("material_specular", 1);
+        m_Shader->SetUniformFloat("material_shininess", 32.0f);
+        m_Shader->SetUniformVec3("u_AmbientColor", glm::vec3(0.1f));
     }
 
 
@@ -208,6 +215,11 @@ namespace Intro {
         // 3. 更新 UBO（相机和光源数据上传到 GPU）
         m_CameraUBO->OnUpdate(m_Camera, m_Time); // 相机 UBO：视图、投影、相机位置
         m_LightsUBO->OnUpdate(ecs);             // 光源 UBO：收集场景中所有光源
+
+        m_Shader->Bind();
+        // 重新绑定UBO（如果需要）
+        m_CameraUBO->BindBase(GL_UNIFORM_BUFFER, CAMERA_UBO_BINDING);
+        m_LightsUBO->BindBase(GL_UNIFORM_BUFFER, LIGHTS_UBO_BINDING);
 
         // 4. 收集并排序渲染项（替代原来的 m_RenderableData）
         m_RenderQueue.Clear();

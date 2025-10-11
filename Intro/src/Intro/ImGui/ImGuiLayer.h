@@ -9,6 +9,7 @@
 #include "Intro/Events/KeyEvent.h"
 #include "Intro/Events/MouseEvent.h"
 #include "Intro/Renderer/RendererLayer.h"
+#include "Intro/ECS/Components.h"
 #include "glm/gtc/quaternion.hpp"
 
 namespace Intro {
@@ -62,6 +63,7 @@ namespace Intro {
 		void CreatePrimitive(ShapeType type); // 创建基础几何体
 		void UpdateSelectedEntityTransform(); // 应用变换到选中实体
 		void SyncTransformEditor();       // 同步选中实体的变换到编辑器
+		void CreateLight(LightType type);//创建灯光
 
 		//imguizmo
 		void RenderGizmo();
@@ -101,6 +103,14 @@ namespace Intro {
 		char m_TagEditBuffer[256] = { 0 };
 		bool m_ShouldOpenRenamePopup = false;
 		bool m_RenamePopupNeedsFocus = false;
+
+
+
+
+
+
+		std::shared_ptr<Material> defaultMaterial;
+		std::shared_ptr<Shader> defaultShader;
 	};
 
 }

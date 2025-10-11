@@ -30,6 +30,7 @@ namespace Intro {
 			return *s_SceneManager;
 		}
 		
+		
 		bool IsViewportHovered() const { return m_ViewportHovered; }
 		bool IsViewportFocused() const { return m_ViewportFocused; }
 		bool IsUsingGizmo() const { return m_IsUsingGizmo; }
@@ -50,6 +51,9 @@ namespace Intro {
 		bool m_ViewportHovered = false;
 		bool m_ViewportFocused = false;
 		bool m_IsUsingGizmo = false;
+
+		std::shared_ptr<Material> defaultMaterial;
+		std::shared_ptr<Shader> defaultShader;
 
 	private:
 		static Application* s_Instance;

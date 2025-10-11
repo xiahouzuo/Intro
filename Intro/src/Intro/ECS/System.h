@@ -67,7 +67,21 @@ namespace Intro {
             }
 
 
-            // ¥¶¿ÌModelComponent£®¬‘£¨¿‡À∆MeshComponent£©
+            auto modelView = ecs.GetRegistry().view<TransformComponent, ModelComponent, MaterialComponent>();
+            for (auto [entity, tf, modelComp, matComp] : modelView.each()) {
+                if (!modelComp.model || !matComp.material) continue;
+                for (const auto& meshPtr : modelComp.model->GetMeshes()) {
+                    RenderItem item;
+                    item.mesh = meshPtr;
+                    item.material = matComp.material;
+                    item.transform = tf.transform.GetModelMatrix();
+                    item.transparent = matComp.Transparent;
+                    if (item.transparent)
+                        queue.transparent.push_back(item);
+                    else
+                        queue.opaque.push_back(item);
+                }
+            }
         }
     };
 

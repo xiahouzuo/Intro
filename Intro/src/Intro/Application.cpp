@@ -21,6 +21,12 @@ namespace Intro {
 		m_Window->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
 
 		s_SceneManager = new SceneManager;
+		
+		defaultShader = std::make_shared<Shader>(
+			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.vert",
+			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.frag"
+		);
+		defaultMaterial = std::make_shared<Material>(defaultShader);
 		//临时模型
 		std::shared_ptr<Model> model;
 		model = std::make_shared<Model>("E:/MyEngine/Intro/Intro/src/Intro/Assert/models/backpack.obj");
@@ -36,6 +42,11 @@ namespace Intro {
 			entity,
 			model  // 模型资源
 		);
+
+		auto& materialComp = defaultScene.GetECS().AddComponent<MaterialComponent>(
+			entity,
+			defaultMaterial
+			);
 
 		defaultScene.SetActive(true);
 

@@ -23,6 +23,14 @@ namespace Intro {
 		m_TransformEditor(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f)),
 		m_EulerAngles(0.0f)
 	{
+
+
+		defaultShader = std::make_shared<Shader>(
+			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.vert",
+			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.frag"
+		);
+		defaultMaterial = std::make_shared<Material>(defaultShader);
+
 	}
 
 	ImGuiLayer::~ImGuiLayer()
@@ -284,11 +292,19 @@ namespace Intro {
 				ImGui::EndMenu();
 			}
 
-			if (ImGui::BeginMenu("Create"))
+			if (ImGui::BeginMenu("Create Primitive"))
 			{
 				if (ImGui::MenuItem("Cube")) CreatePrimitive(ShapeType::Cube);
 				if (ImGui::MenuItem("Sphere")) CreatePrimitive(ShapeType::Sphere);
 				if (ImGui::MenuItem("Plane")) CreatePrimitive(ShapeType::Plane);
+				ImGui::EndMenu();
+			}
+
+			if (ImGui::BeginMenu("Create Light"))
+			{
+				if (ImGui::MenuItem("Directional Light")) CreateLight(LightType::Directional);
+				if (ImGui::MenuItem("Point Light")) CreateLight(LightType::Point);
+				if (ImGui::MenuItem("Spot Light")) CreateLight(LightType::Spot);
 				ImGui::EndMenu();
 			}
 
@@ -597,6 +613,7 @@ namespace Intro {
 		activeScene->GetECS().GetRegistry().emplace<TagComponent>(entity, "model");
 		activeScene->GetECS().GetRegistry().emplace<TransformComponent>(entity);
 		activeScene->GetECS().GetRegistry().emplace<ModelComponent>(entity, model);
+		activeScene->GetECS().GetRegistry().emplace<MaterialComponent>(entity, defaultMaterial);
 
 		RefreshEntityList();
 		return true;
@@ -660,11 +677,54 @@ namespace Intro {
 		registry.emplace<TagComponent>(entity, name);
 		registry.emplace<TransformComponent>(entity); // 默认变换
 		registry.emplace<MeshComponent>(entity, meshPtr);
-
-		// 若有默认材质/渲染组件，也可在这里附加
-		// registry.emplace<MaterialComponent>(entity, defaultMaterialPtr);
+		registry.emplace<MaterialComponent>(entity, defaultMaterial);
 
 		// 如果你的编辑器有刷新实体列表的函数，调用它（方法名可能不同）
+		RefreshEntityList();
+	}
+
+	void ImGuiLayer::CreateLight(LightType type) {
+		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
+		if (!activeScene) return;
+
+		// 1. 创建实体并添加标签组件
+		auto entity = activeScene->CreateEntity();
+		std::string lightName;
+		switch (type) {
+		case LightType::Directional: lightName = "Directional Light"; break;
+		case LightType::Point: lightName = "Point Light"; break;
+		case LightType::Spot: lightName = "Spot Light"; break;
+		}
+		activeScene->GetECS().AddComponent<TagComponent>(entity, lightName);
+
+		// 2. 添加变换组件（影响灯光位置/方向）
+		TransformComponent transform;
+		// 点光/聚光灯默认位置在相机前方，方便观察
+		if (type != LightType::Directional) {
+			transform.transform.position = glm::vec3(0.0f); // 相机前方5单位
+		}
+		activeScene->GetECS().AddComponent<TransformComponent>(entity, transform);
+
+		// 3. 添加灯光组件并设置默认属性
+		LightComponent light;
+		light.Type = type;
+		light.Color = glm::vec3(1.0f); // 白色光
+		light.Intensity = 1.0f;
+		// 聚光灯默认角度
+		if (type == LightType::Spot) {
+			light.SpotAngle = 30.0f;
+			light.InnerSpotAngle = 20.0f;
+			light.Range = 10.0f;
+		}
+		// 点光默认范围
+		if (type == LightType::Point) {
+			light.Range = 10.0f;
+		}
+		activeScene->GetECS().AddComponent<LightComponent>(entity, light);
+
+		// 4. 自动选中新创建的灯光实体
+		m_SelectedEntity = entity;
+		m_SelectedEntityName = lightName;
 		RefreshEntityList();
 	}
 

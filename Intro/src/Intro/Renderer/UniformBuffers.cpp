@@ -8,7 +8,13 @@ namespace Intro {
         LightsUBOData data{};
         auto view = ecs.GetRegistry().view<TransformComponent, LightComponent>();
 
+        ITR_INFO("Found {} lights in scene", view.size_hint());
+
         for (auto [entity, tf, light] : view.each()) {
+
+            ITR_INFO("Light - Type: {}, Color: ({},{},{}), Intensity: {}",
+                (int)light.Type, light.Color.r, light.Color.g, light.Color.b, light.Intensity);
+
             switch (light.Type) {
             case LightType::Directional:
                 if (data.numDir < MAX_DIR_LIGHTS) {
@@ -17,7 +23,11 @@ namespace Intro {
                         tf.transform.rotation * light.Direction, 0.0f
                     );
                     dirLight.color = glm::vec4(light.Color, light.Intensity);
-                    data.numDir++;
+                    ITR_INFO("Directional Light {}: dir=({}, {}, {}), color=({}, {}, {}), intensity={}",
+                        data.numDir,
+                        dirLight.direction.x, dirLight.direction.y, dirLight.direction.z,
+                        dirLight.color.x, dirLight.color.y, dirLight.color.z, dirLight.color.w);
+                        data.numDir++;
                 }
                 break;
             case LightType::Point:
