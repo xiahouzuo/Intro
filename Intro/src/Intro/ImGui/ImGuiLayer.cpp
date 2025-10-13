@@ -26,8 +26,8 @@ namespace Intro {
 
 
 		defaultShader = std::make_shared<Shader>(
-			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.vert",
-			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.frag"
+			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/tempShader.vert",
+			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/tempShader.frag"
 		);
 		defaultMaterial = std::make_shared<Material>(defaultShader);
 
@@ -437,61 +437,109 @@ namespace Intro {
 	 * 显示实体检查器窗口
 	 * 功能：编辑选中实体的组件（目前支持Transform）
 	 */
-	void ImGuiLayer::ShowEntityInspectorWindow()
-	{
-		ImGui::Begin("Inspector");
+void ImGuiLayer::ShowEntityInspectorWindow() {
+    ImGui::Begin("Inspector");
+    
+    if (m_SelectedEntity == entt::null) {
+        ImGui::Text("No entity selected");
+        ImGui::End();
+        return;
+    }
 
-		if (m_SelectedEntity == entt::null)
-		{
-			ImGui::Text("No entity selected");
-			ImGui::End();
-			return;
-		}
+    auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
+    if (!activeScene) {
+        ImGui::End();
+        return;
+    }
 
-		// 获取当前场景和实体注册表
-		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
-		if (!activeScene)
-		{
-			ImGui::End();
-			return;
-		}
+    auto& registry = activeScene->GetECS().GetRegistry();
+    if (!registry.valid(m_SelectedEntity)) {
+        m_SelectedEntity = entt::null;
+        ImGui::End();
+        return;
+    }
 
-		auto& registry = activeScene->GetECS().GetRegistry();
-		if (!registry.valid(m_SelectedEntity)) // 检查实体有效性
-		{
-			m_SelectedEntity = entt::null;
-			ImGui::End();
-			return;
-		}
+    ImGui::Text("Entity: %s", m_SelectedEntityName.c_str());
+    ImGui::Separator();
 
-		// 显示实体名称
-		ImGui::Text("Entity: %s", m_SelectedEntityName.c_str());
-		ImGui::Separator();
+    // 编辑Transform组件
+    if (registry.any_of<TransformComponent>(m_SelectedEntity)) {
+        if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
+            ImGui::DragFloat3("Position", &m_TransformEditor.position.x, 0.1f);
+            ImGui::DragFloat3("Rotation", &m_EulerAngles.x, 1.0f);
+            ImGui::DragFloat3("Scale", &m_TransformEditor.scale.x, 0.1f);
 
-		// 编辑Transform组件
-		if (registry.any_of<TransformComponent>(m_SelectedEntity))
-		{
-			if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
-			{
-				// 显示位置、旋转（欧拉角）、缩放编辑框
-				ImGui::DragFloat3("Position", &m_TransformEditor.position.x, 0.1f);
-				ImGui::DragFloat3("Rotation", &m_EulerAngles.x, 1.0f); // 角度单位
-				ImGui::DragFloat3("Scale", &m_TransformEditor.scale.x, 0.1f);
+            if (ImGui::Button("Apply Transform")) {
+                m_TransformEditor.rotation = glm::quat(glm::radians(m_EulerAngles));
+                UpdateSelectedEntityTransform();
+            }
+        }
+    }
 
-				// 应用变换到实体
-				if (ImGui::Button("Apply Transform"))
-				{
-					// 欧拉角转四元数（内部存储用四元数避免万向锁）
-					m_TransformEditor.rotation = glm::quat(glm::radians(m_EulerAngles));
-					UpdateSelectedEntityTransform();
+    // 新增：编辑Light组件
+	// 在 Light 组件编辑部分添加：
+	if (registry.any_of<LightComponent>(m_SelectedEntity)) {
+		if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
+			auto& light = registry.get<LightComponent>(m_SelectedEntity);
+
+			// 灯光类型
+			const char* lightTypes[] = { "Directional", "Point", "Spot" };
+			int currentType = static_cast<int>(light.Type);
+			if (ImGui::Combo("Type", &currentType, lightTypes, 3)) {
+				light.Type = static_cast<LightType>(currentType);
+			}
+
+			// 颜色和强度
+			ImGui::ColorEdit3("Color", &light.Color.r);
+			ImGui::DragFloat("Intensity", &light.Intensity, 0.1f, 0.0f, 10.0f);
+
+			// 方向光特定设置
+			if (light.Type == LightType::Directional) {
+				ImGui::Text("Direction controlled by entity rotation");
+
+				// 显示当前方向信息
+				if (registry.any_of<TransformComponent>(m_SelectedEntity)) {
+					auto& transform = registry.get<TransformComponent>(m_SelectedEntity);
+					glm::vec3 worldDirection = transform.transform.rotation * light.Direction;
+					ImGui::Text("World Direction: (%.2f, %.2f, %.2f)",
+						worldDirection.x, worldDirection.y, worldDirection.z);
+				}
+
+				// 快速方向预设按钮
+				if (ImGui::Button("Down")) {
+					auto& transform = registry.get<TransformComponent>(m_SelectedEntity);
+					transform.transform.rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f); // 默认朝向
+					SyncTransformEditor(); // 同步到编辑器
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Up")) {
+					auto& transform = registry.get<TransformComponent>(m_SelectedEntity);
+					transform.transform.rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+					SyncTransformEditor();
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Forward")) {
+					auto& transform = registry.get<TransformComponent>(m_SelectedEntity);
+					transform.transform.rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+					SyncTransformEditor();
 				}
 			}
+
+			// 点光源/聚光灯设置
+			if (light.Type == LightType::Point || light.Type == LightType::Spot) {
+				ImGui::DragFloat("Range", &light.Range, 0.1f, 0.1f, 100.0f);
+			}
+
+			// 聚光灯特定设置
+			if (light.Type == LightType::Spot) {
+				ImGui::DragFloat("Spot Angle", &light.SpotAngle, 1.0f, 1.0f, 89.0f);
+				ImGui::DragFloat("Inner Angle", &light.InnerSpotAngle, 1.0f, 1.0f, light.SpotAngle);
+			}
 		}
-
-		// 可扩展：添加其他组件（如Mesh、Light）的编辑逻辑
-
-		ImGui::End();
 	}
+
+    ImGui::End();
+}
 
 	/**
 	 * 显示场景控制窗口
@@ -697,32 +745,38 @@ namespace Intro {
 		}
 		activeScene->GetECS().AddComponent<TagComponent>(entity, lightName);
 
-		// 2. 添加变换组件（影响灯光位置/方向）
+		// 2. 添加变换组件
 		TransformComponent transform;
-		// 点光/聚光灯默认位置在相机前方，方便观察
-		if (type != LightType::Directional) {
-			transform.transform.position = glm::vec3(0.0f); // 相机前方5单位
+		if (type == LightType::Directional) {
+			// 方向光：设置明确的旋转来指向场景
+			transform.transform.rotation = glm::angleAxis(glm::radians(-45.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+		}
+		else {
+			// 点光/聚光灯：放在相机前方
+			auto& camera = m_RendererLayer->GetCamera();
+			transform.transform.position = glm::vec3(0.0f);
 		}
 		activeScene->GetECS().AddComponent<TransformComponent>(entity, transform);
 
-		// 3. 添加灯光组件并设置默认属性
+		// 3. 添加灯光组件
 		LightComponent light;
 		light.Type = type;
-		light.Color = glm::vec3(1.0f); // 白色光
-		light.Intensity = 1.0f;
-		// 聚光灯默认角度
+		light.Color = glm::vec3(1.0f, 1.0f, 1.0f);
+		light.Intensity = (type == LightType::Directional) ? 1.0f : 2.0f;
+		light.Direction = glm::vec3(0.0f, 0.0f, -1.0f); // 局部空间向前
+
 		if (type == LightType::Spot) {
-			light.SpotAngle = 30.0f;
-			light.InnerSpotAngle = 20.0f;
+			light.SpotAngle = 45.0f;
+			light.InnerSpotAngle = 30.0f;
 			light.Range = 10.0f;
 		}
-		// 点光默认范围
 		if (type == LightType::Point) {
 			light.Range = 10.0f;
 		}
+
 		activeScene->GetECS().AddComponent<LightComponent>(entity, light);
 
-		// 4. 自动选中新创建的灯光实体
+		// 4. 自动选中
 		m_SelectedEntity = entity;
 		m_SelectedEntityName = lightName;
 		RefreshEntityList();
@@ -731,19 +785,29 @@ namespace Intro {
 	/**
 	 * 将编辑器中的变换应用到选中实体
 	 */
-	void ImGuiLayer::UpdateSelectedEntityTransform()
-	{
+	void ImGuiLayer::UpdateSelectedEntityTransform() {
 		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
 		if (!activeScene || m_SelectedEntity == entt::null)
 			return;
 
 		auto& registry = activeScene->GetECS().GetRegistry();
-		if (registry.any_of<TransformComponent>(m_SelectedEntity))
-		{
+		if (registry.any_of<TransformComponent>(m_SelectedEntity)) {
 			auto& transform = registry.get<TransformComponent>(m_SelectedEntity);
 			transform.transform.position = m_TransformEditor.position;
 			transform.transform.rotation = m_TransformEditor.rotation;
 			transform.transform.scale = m_TransformEditor.scale;
+
+			// 如果是方向光，记录方向信息
+			if (registry.any_of<LightComponent>(m_SelectedEntity)) {
+				auto& light = registry.get<LightComponent>(m_SelectedEntity);
+				if (light.Type == LightType::Directional) {
+					// 计算当前的世界方向（用于调试）
+					glm::vec3 worldDirection = transform.transform.rotation * light.Direction;
+					ITR_INFO("Directional Light Direction Updated - Local: ({},{},{}), World: ({},{},{})",
+						light.Direction.x, light.Direction.y, light.Direction.z,
+						worldDirection.x, worldDirection.y, worldDirection.z);
+				}
+			}
 		}
 	}
 

@@ -110,32 +110,6 @@ vec3 CalcSpot(int index, vec3 normal, vec3 viewDir, vec3 diffuseMap, vec3 specul
 }
 
 void main() {
-    // 修复：提前采样纹理，避免重复采样
-    vec3 diffuseMap = texture(material_diffuse, vUV).rgb;
-    vec3 specularMap = texture(material_specular, vUV).rgb;
-
-    vec3 normal = normalize(vNormal);
-    vec3 viewDir = normalize(camera.viewPos.xyz - vFragPos);
-    vec3 result = vec3(0.0);
-
-    // 环境光
-    vec3 ambient = u_AmbientColor * diffuseMap;
-    result += ambient;
-
-    // 方向光
-    for (int i = 0; i < lights.numDir && i < 4; i++) {
-        result += CalcDirectional(i, normal, viewDir, diffuseMap, specularMap);
-    }
-    
-    // 点光源
-    for (int i = 0; i < lights.numPoint && i < 8; i++) {
-        result += CalcPoint(i, normal, viewDir, diffuseMap, specularMap);
-    }
-    
-    // 聚光灯
-    for (int i = 0; i < lights.numSpot && i < 4; i++) {
-        result += CalcSpot(i, normal, viewDir, diffuseMap, specularMap);
-    }
-
-    FragColor = vec4(result, 1.0);
+    vec3 diff = texture(material_diffuse, vUV).rgb;
+    FragColor = vec4(diff, 1.0); // 应显示正常贴图，不应全白
 }

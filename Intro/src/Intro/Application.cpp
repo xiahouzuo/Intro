@@ -23,14 +23,33 @@ namespace Intro {
 		s_SceneManager = new SceneManager;
 		
 		defaultShader = std::make_shared<Shader>(
-			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.vert",
-			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/BasicShader.frag"
+			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/tempShader.vert",
+			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/tempShader.frag"
 		);
 		defaultMaterial = std::make_shared<Material>(defaultShader);
 		//临时模型
 		std::shared_ptr<Model> model;
 		model = std::make_shared<Model>("E:/MyEngine/Intro/Intro/src/Intro/Assert/models/backpack.obj");
 		Scene& defaultScene = s_SceneManager->CreateScene<Scene>("defaultScene");
+
+
+		// 创建明确的默认方向光
+		entt::entity lightEntity = defaultScene.CreateEntity();
+		defaultScene.GetECS().AddComponent<TagComponent>(lightEntity, "Main Directional Light");
+
+		// 设置方向光的变换 - 明确指向下方
+		TransformComponent lightTransform;
+		lightTransform.transform.rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f)); // 指向下方
+		defaultScene.GetECS().AddComponent<TransformComponent>(lightEntity, lightTransform);
+
+		LightComponent light;
+		light.Type = LightType::Directional;
+		light.Color = glm::vec3(1.0f, 1.0f, 1.0f); // 白色
+		light.Intensity = 1.0f;
+		light.Direction = glm::vec3(0.0f, 0.0f, -1.0f); // 局部空间向前
+		defaultScene.GetECS().AddComponent<LightComponent>(lightEntity, light);
+
+
 		entt::entity entity = defaultScene.CreateEntity();
 		auto& transformComp = defaultScene.GetECS().AddComponent<TransformComponent>(entity,
 			glm::vec3(0.0f, 0.0f, 0.0f),  // 位置

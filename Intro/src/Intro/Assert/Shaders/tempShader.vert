@@ -16,7 +16,7 @@ out vec3 vFragPos;
 out vec3 vNormal;
 out vec2 vUV;
 
-uniform mat4 u_Transform; // object model
+uniform mat4 u_Transform;
 
 void main() {
     vec4 worldPos = u_Transform * vec4(aPos, 1.0);
@@ -24,7 +24,7 @@ void main() {
     
     // ·¨Ïß±ä»»
     mat3 normalMat = transpose(inverse(mat3(u_Transform)));
-    vNormal = normalMat * aNormal;
+    vNormal = normalize(normalMat * aNormal);
     
     vUV = aUV;
     gl_Position = camera.proj * camera.view * worldPos;
