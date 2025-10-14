@@ -13,6 +13,18 @@ struct DirLight {
     vec4 color;
 };
 
+struct PointLight {
+    vec4 position;  // xyz=pos, w=range
+    vec4 color;     // rgb=color, w=intensity
+};
+
+struct SpotLight {
+    vec4 position;  // xyz=pos, w=range
+    vec4 direction; // xyz=direction, w=outerCos
+    vec4 color;     // rgb=color, w=intensity
+    vec4 params;    // x=innerCos, y=unused, z=unused, w=unused
+};
+
 layout(std140, binding = 1) uniform LightsUBO {
     int numDir;
     int numPoint;
@@ -20,6 +32,8 @@ layout(std140, binding = 1) uniform LightsUBO {
     vec2 pad;
     
     DirLight dirLights[4];
+    PointLight pointLights[8];
+    SpotLight spotLights[4];
 } lights;
 
 in vec3 vFragPos;
@@ -33,39 +47,44 @@ uniform sampler2D material_specular;
 uniform float material_shininess;
 uniform vec3 u_AmbientColor;
 
+// 点光源衰减函数
+float CalculateAttenuation(float distance, float range) {
+    float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * distance * distance);
+    return clamp(attenuation, 0.0, 1.0) * smoothstep(range, range * 0.5, distance);
+}
+
+// 聚光灯强度计算
+float CalculateSpotIntensity(vec3 lightDir, vec3 spotDir, float outerCos, float innerCos) {
+    float theta = dot(lightDir, spotDir);
+    float epsilon = innerCos - outerCos;
+    return clamp((theta - outerCos) / epsilon, 0.0, 1.0);
+}
+
 void main() {
-    // **调试1：直接输出光的颜色**
+    // 调试代码保持不变...
     if (vUV.x > 0.95 && vUV.y > 0.95) {
         if (lights.numDir > 0) {
             FragColor = vec4(lights.dirLights[0].color.rgb, 1.0);
         } else {
-            FragColor = vec4(1.0, 0.0, 1.0, 1.0); // 紫色表示没有方向光
+            FragColor = vec4(1.0, 0.0, 1.0, 1.0);
         }
         return;
     }
     
-    // **调试2：检查是否访问了正确的UBO绑定点**
-    vec3 debugColor = vec3(0.0);
-    if (lights.numDir > 0) {
-        debugColor = lights.dirLights[0].color.rgb;
-    }
-    
-    // **调试3：强制测试不同的颜色组合**
     if (vUV.x < 0.05 && vUV.y > 0.95) {
-        // 左上角：显示纯白色测试
         FragColor = vec4(1.0, 1.0, 1.0, 1.0);
         return;
     }
     
     if (vUV.x < 0.05 && vUV.y < 0.05) {
-        // 左下角：显示硬编码的颜色
-        FragColor = vec4(0.0, 1.0, 0.0, 1.0); // 绿色
+        FragColor = vec4(0.0, 1.0, 0.0, 1.0);
         return;
     }
     
     // 正常的渲染逻辑
     vec3 diffuseMap = texture(material_diffuse, vUV).rgb;
     vec3 normal = normalize(vNormal);
+    vec3 viewDir = normalize(camera.viewPos.xyz - vFragPos);
     vec3 result = vec3(0.0);
 
     // 环境光
@@ -81,7 +100,46 @@ void main() {
         result += diffuse;
     }
 
+    // 点光源
+    for (int i = 0; i < lights.numPoint && i < 8; i++) {
+        vec3 lightPos = lights.pointLights[i].position.xyz;
+        float lightRange = lights.pointLights[i].position.w;
+        
+        vec3 lightDir = normalize(lightPos - vFragPos);
+        float diff = max(dot(normal, lightDir), 0.0);
+        
+        // 计算衰减
+        float distance = length(lightPos - vFragPos);
+        float attenuation = CalculateAttenuation(distance, lightRange);
+        
+        vec3 lightColor = lights.pointLights[i].color.rgb;
+        vec3 diffuse = diff * diffuseMap * lightColor * attenuation;
+        result += diffuse;
+    }
+
+    // 聚光灯
+    for (int i = 0; i < lights.numSpot && i < 4; i++) {
+        vec3 lightPos = lights.spotLights[i].position.xyz;
+        float lightRange = lights.spotLights[i].position.w;
+        vec3 spotDir = normalize(-lights.spotLights[i].direction.xyz);
+        float outerCos = lights.spotLights[i].direction.w;
+        float innerCos = lights.spotLights[i].params.x;
+        
+        vec3 lightDir = normalize(lightPos - vFragPos);
+        float diff = max(dot(normal, lightDir), 0.0);
+        
+        // 计算衰减
+        float distance = length(lightPos - vFragPos);
+        float attenuation = CalculateAttenuation(distance, lightRange);
+        
+        // 计算聚光灯强度
+        float spotIntensity = CalculateSpotIntensity(lightDir, spotDir, outerCos, innerCos);
+        
+        vec3 lightColor = lights.spotLights[i].color.rgb;
+        vec3 diffuse = diff * diffuseMap * lightColor * attenuation * spotIntensity;
+        result += diffuse;
+    }
+
     result = clamp(result, 0.0, 1.0);
     FragColor = vec4(result, 1.0);
-
 }

@@ -217,7 +217,6 @@
     <ClCompile Include="src\Intro\Renderer\Shader.cpp" />
     <ClCompile Include="src\Intro\Renderer\ShapeGenerator.cpp" />
     <ClCompile Include="src\Intro\Renderer\Texture.cpp" />
-    <ClCompile Include="src\Intro\Renderer\UniformBuffers.cpp" />
     <ClCompile Include="src\Intro\Renderer\RenderQueue.h" />
     <ClCompile Include="src\Platform\OpenGL\ImGuiOpenGLRenderer.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsInput.cpp" />

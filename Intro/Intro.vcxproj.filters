@@ -222,7 +222,6 @@
     <ClCompile Include="vendor\imguizmo\ImGuizmo.cpp">
       <Filter>vendor\imguizmo</Filter>
     </ClCompile>
-    <ClCompile Include="src\Intro\Renderer\UniformBuffers.cpp" />
     <ClCompile Include="src\Intro\Renderer\RenderQueue.h" />
   </ItemGroup>
 </Project>

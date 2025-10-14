@@ -21,6 +21,10 @@ namespace Intro {
     {
         return glm::lookAt(Position, Position + m_Front, m_WorldUp);
     }
+    glm::vec3 FreeCamera::GetFront() const
+    {
+        return m_Front;
+    }
 
     void FreeCamera::OnUpdate(float deltaTime)
     {

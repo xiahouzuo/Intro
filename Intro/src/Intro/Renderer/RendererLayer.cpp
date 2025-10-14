@@ -54,6 +54,164 @@ namespace Intro {
         m_Shader->SetUniformVec3("u_AmbientColor", glm::vec3(0.2f));
     }
 
+    void RendererLayer::OnUpdate(float deltaTime) {
+        GLenum error = glGetError();
+        if (error != GL_NO_ERROR) {
+            ITR_ERROR("OpenGL error before rendering: 0x%x", error);
+        }
+
+        // 更新相机和时间
+        m_Camera.OnUpdate(deltaTime);
+        m_Time += deltaTime;
+
+        auto& sceneMgr = Application::GetSceneManager();
+        auto* activeScene = sceneMgr.GetActiveScene();
+        if (!activeScene) {
+            ITR_ERROR("No active Scene");
+            return;
+        }
+        auto& ecs = activeScene->GetECS();
+
+        // 更新 UBO
+        m_CameraUBO->OnUpdate(m_Camera, m_Time);
+        m_LightsUBO->OnUpdate(ecs);
+
+        // 强制重新绑定 UBO 基址（安全）
+        m_CameraUBO->BindBase(GL_UNIFORM_BUFFER, CAMERA_UBO_BINDING);
+        m_LightsUBO->BindBase(GL_UNIFORM_BUFFER, LIGHTS_UBO_BINDING);
+
+        // 绑定默认 shader（仅用于 UBO / 全局 uniform）
+        m_Shader->Bind();
+
+        // 验证 shader 中的 UBO 块绑定 (debug)
+        GLuint shaderProgram = m_Shader->GetShaderID();
+        GLuint lightsBlockIndex = glGetUniformBlockIndex(shaderProgram, "LightsUBO");
+        GLint lightsBlockBinding = -1;
+        if (lightsBlockIndex != GL_INVALID_INDEX) {
+            glGetActiveUniformBlockiv(shaderProgram, lightsBlockIndex, GL_UNIFORM_BLOCK_BINDING, &lightsBlockBinding);
+            ITR_INFO("Shader UBO Block - Index: {}, Binding: {}", lightsBlockIndex, lightsBlockBinding);
+        }
+        else {
+            ITR_ERROR("LightsUBO block not found in shader!");
+        }
+
+        static bool firstRun = true;
+        if (firstRun) {
+            GLint boundCameraUBO = 0, boundLightsUBO = 0;
+            glGetIntegeri_v(GL_UNIFORM_BUFFER_BINDING, CAMERA_UBO_BINDING, &boundCameraUBO);
+            glGetIntegeri_v(GL_UNIFORM_BUFFER_BINDING, LIGHTS_UBO_BINDING, &boundLightsUBO);
+
+            ITR_INFO("UBO Binding Check - Camera: {} (expected: {}), Lights: {} (expected: {})",
+                boundCameraUBO, m_CameraUBO->GetID(),
+                boundLightsUBO, m_LightsUBO->GetID());
+            firstRun = false;
+        }
+
+        // 收集渲染项
+        m_RenderQueue.Clear();
+        RenderSystem::CollectRenderables(ecs, m_RenderQueue, m_Camera.GetPosition());
+        m_RenderQueue.Sort(m_Camera.GetPosition());
+
+        // 渲染到 FBO
+        if (m_FBO) {
+            BindRenderState();
+
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+            glEnable(GL_DEPTH_TEST);
+            glDisable(GL_BLEND);
+
+            std::shared_ptr<Material> lastMaterial = nullptr;
+
+            // 不透明物体绘制
+            for (const auto& item : m_RenderQueue.opaque) {
+                auto& material = item.material ? item.material : m_DefaultMaterial;
+
+                if (material != lastMaterial) {
+                    // 绑定材质（材质实现应绑定 shader）
+                    material->Bind();
+
+                    // 强制确保 sampler uniforms 指向纹理单元（在 shader Bind 后设置）
+                    Shader* matShader = material->GetShader().get();
+                    if (matShader) {
+                        matShader->Bind();
+                        matShader->SetUniformInt("material_diffuse", 0);
+                        matShader->SetUniformInt("material_specular", 1);
+                        // 其它全局材质 uniform
+                        matShader->SetUniformFloat("material_shininess", material->GetShininess());
+                        matShader->SetUniformVec3("u_AmbientColor", material->GetAmbient());
+                    }
+
+                    // 强制绑定材质的纹理到对应纹理单元（安全措施）
+                    auto diffuseTexPtr = material->GetDiffuseTextureID();
+                    auto specTexPtr = material->GetSpecularTextureID();
+
+                    GLuint diffuseID = 0u, specID = 0u;
+                    if (diffuseTexPtr) {
+                        diffuseID = diffuseTexPtr->GetID();
+                    }
+                    if (specTexPtr) {
+                        specID = specTexPtr->GetID();
+                    }
+
+                    glActiveTexture(GL_TEXTURE0);
+                    glBindTexture(GL_TEXTURE_2D, diffuseID);
+                    glActiveTexture(GL_TEXTURE1);
+                    glBindTexture(GL_TEXTURE_2D, specID);
+                    glActiveTexture(GL_TEXTURE0);
+
+                    ITR_INFO("Material diffuseID = {}, specID = {}, shininess = {}", diffuseID, specID, material->GetShininess());
+
+                    lastMaterial = material;
+                }
+
+                // 设置模型矩阵
+                material->GetShader()->SetUniformMat4("u_Transform", item.transform);
+
+                // 绘制网格
+                if (item.mesh) {
+                    RenderCommand::Draw(*item.mesh, *material->GetShader());
+                }
+            }
+
+            // 透明物体绘制
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthMask(GL_FALSE);
+
+            for (const auto& item : m_RenderQueue.transparent) {
+                auto& material = item.material ? item.material : m_DefaultMaterial;
+                material->Bind();
+
+                // Rebind UBOs just in case (redundant but safe)
+                m_CameraUBO->BindBase(GL_UNIFORM_BUFFER, CAMERA_UBO_BINDING);
+                m_LightsUBO->BindBase(GL_UNIFORM_BUFFER, LIGHTS_UBO_BINDING);
+
+                material->GetShader()->SetUniformMat4("u_Transform", item.transform);
+
+                if (item.mesh) {
+                    RenderCommand::Draw(*item.mesh, *material->GetShader());
+                }
+            }
+
+            // 恢复状态
+            glDepthMask(GL_TRUE);
+            glDisable(GL_BLEND);
+            lastMaterial = nullptr;
+
+            // 解绑并恢复状态
+            m_Shader->UnBind();
+            UnbindRenderState();
+
+            error = glGetError();
+            if (error != GL_NO_ERROR) {
+                ITR_ERROR("OpenGL error after rendering: 0x%x", error);
+            }
+        }
+    }
+
+
     void RendererLayer::CreateFramebuffer(uint32_t width, uint32_t height)
     {
         DestroyFramebuffer();
@@ -133,110 +291,7 @@ namespace Intro {
         if (!m_SavedState.cullFace) glDisable(GL_CULL_FACE);
     }
 
-    void RendererLayer::OnUpdate(float deltaTime) {
 
-        GLenum error = glGetError();
-        if (error != GL_NO_ERROR) {
-            ITR_ERROR("OpenGL error before rendering: 0x%x", error);
-        }
-
-        m_Camera.OnUpdate(deltaTime);
-        m_Time += deltaTime;
-
-        auto& sceneMgr = Application::GetSceneManager();
-        auto* activeScene = sceneMgr.GetActiveScene();
-        if (!activeScene) {
-            ITR_ERROR("No active Scene");
-            return;
-        }
-        auto& ecs = activeScene->GetECS();
-
-        m_CameraUBO->OnUpdate(m_Camera, m_Time);
-        m_LightsUBO->OnUpdate(ecs);
-
-        // Ensure UBOs are bound to expected binding points (safety)
-        m_CameraUBO->BindBase(GL_UNIFORM_BUFFER, CAMERA_UBO_BINDING);
-        m_LightsUBO->BindBase(GL_UNIFORM_BUFFER, LIGHTS_UBO_BINDING);
-
-        // Bind a global/default shader for UBO/global uniforms if needed
-        m_Shader->Bind();
-
-        // Collect renderables
-        m_RenderQueue.Clear();
-        RenderSystem::CollectRenderables(ecs, m_RenderQueue, m_Camera.GetPosition());
-        m_RenderQueue.Sort(m_Camera.GetPosition());
-
-        if (m_FBO) {
-            BindRenderState();
-
-            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-            glEnable(GL_DEPTH_TEST);
-            glDisable(GL_BLEND);
-
-            std::shared_ptr<Material> lastMaterial = nullptr;
-
-            for (const auto& item : m_RenderQueue.opaque) {
-                auto& material = item.material ? item.material : m_DefaultMaterial;
-
-                if (material != lastMaterial) {
-                    // Bind material (ensures shader and textures are bound)
-                    material->Bind();
-
-                    // Also ensure shader-level global uniforms are updated for this material's shader
-                    auto matShaderPtr = material->GetShader();
-                    if (matShaderPtr) {
-                        matShaderPtr->Bind();
-                        matShaderPtr->SetUniformFloat("material_shininess", material->GetShininess());
-                        matShaderPtr->SetUniformVec3("u_AmbientColor", material->GetAmbient());
-                    }
-
-                    lastMaterial = material;
-                }
-
-                // Set transform
-                material->GetShader()->SetUniformMat4("u_Transform", item.transform);
-
-                // Draw
-                if (item.mesh) {
-                    RenderCommand::Draw(*item.mesh, *material->GetShader());
-                }
-            }
-
-            // Transparent pass
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glDepthMask(GL_FALSE);
-
-            for (const auto& item : m_RenderQueue.transparent) {
-                auto& material = item.material ? item.material : m_DefaultMaterial;
-                material->Bind();
-
-                m_CameraUBO->BindBase(GL_UNIFORM_BUFFER, CAMERA_UBO_BINDING);
-                m_LightsUBO->BindBase(GL_UNIFORM_BUFFER, LIGHTS_UBO_BINDING);
-
-                material->GetShader()->SetUniformMat4("u_Transform", item.transform);
-
-                if (item.mesh) {
-                    RenderCommand::Draw(*item.mesh, *material->GetShader());
-                }
-            }
-
-            // restore
-            glDepthMask(GL_TRUE);
-            glDisable(GL_BLEND);
-            lastMaterial = nullptr;
-
-            m_Shader->UnBind();
-            UnbindRenderState();
-
-            error = glGetError();
-            if (error != GL_NO_ERROR) {
-                ITR_ERROR("OpenGL error after rendering: 0x%x", error);
-            }
-        }
-    }
 
     void RendererLayer::OnEvent(Event& event)
     {

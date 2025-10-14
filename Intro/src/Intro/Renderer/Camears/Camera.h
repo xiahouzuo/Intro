@@ -20,6 +20,7 @@ namespace Intro {
         virtual glm::mat4 GetProjectionMat() const {
             return glm::perspective(glm::radians(Fov), AspectRatio, NearClip, FarClip);
         }
+        virtual glm::vec3 GetFront() const = 0;
 
         virtual void OnUpdate(float deltaTime) = 0;
 

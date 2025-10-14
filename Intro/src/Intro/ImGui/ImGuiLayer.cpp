@@ -735,51 +735,75 @@ void ImGuiLayer::ShowEntityInspectorWindow() {
 		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
 		if (!activeScene) return;
 
-		// 1. 创建实体并添加标签组件
+		// 获取相机位置作为参考
+		auto& camera = m_RendererLayer->GetCamera();
+		glm::vec3 cameraPos = camera.GetPosition();
+		glm::vec3 cameraForward = camera.GetFront();
+
+		// 创建实体
 		auto entity = activeScene->CreateEntity();
 		std::string lightName;
-		switch (type) {
-		case LightType::Directional: lightName = "Directional Light"; break;
-		case LightType::Point: lightName = "Point Light"; break;
-		case LightType::Spot: lightName = "Spot Light"; break;
-		}
-		activeScene->GetECS().AddComponent<TagComponent>(entity, lightName);
 
-		// 2. 添加变换组件
-		TransformComponent transform;
-		if (type == LightType::Directional) {
-			// 方向光：设置明确的旋转来指向场景
-			transform.transform.rotation = glm::angleAxis(glm::radians(-45.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-		}
-		else {
-			// 点光/聚光灯：放在相机前方
-			auto& camera = m_RendererLayer->GetCamera();
-			transform.transform.position = glm::vec3(0.0f);
-		}
-		activeScene->GetECS().AddComponent<TransformComponent>(entity, transform);
-
-		// 3. 添加灯光组件
+		// 设置灯光组件
 		LightComponent light;
 		light.Type = type;
 		light.Color = glm::vec3(1.0f, 1.0f, 1.0f);
-		light.Intensity = (type == LightType::Directional) ? 1.0f : 2.0f;
-		light.Direction = glm::vec3(0.0f, 0.0f, -1.0f); // 局部空间向前
 
-		if (type == LightType::Spot) {
+		switch (type) {
+		case LightType::Directional:
+			lightName = "Directional Light";
+			light.Intensity = 1.0f;
+			light.Direction = glm::vec3(0.0f, -1.0f, 0.0f); // 默认向下
+			break;
+
+		case LightType::Point:
+			lightName = "Point Light";
+			light.Intensity = 2.0f;
+			light.Range = 10.0f;
+			light.Color = glm::vec3(1.0f, 0.9f, 0.8f); // 暖色调
+			break;
+
+		case LightType::Spot:
+			lightName = "Spot Light";
+			light.Intensity = 3.0f;
+			light.Range = 15.0f;
 			light.SpotAngle = 45.0f;
 			light.InnerSpotAngle = 30.0f;
-			light.Range = 10.0f;
-		}
-		if (type == LightType::Point) {
-			light.Range = 10.0f;
+			light.Direction = glm::vec3(0.0f, 0.0f, -1.0f); // 向前
+			light.Color = glm::vec3(1.0f, 1.0f, 1.0f);
+			break;
 		}
 
+		// 添加标签组件
+		activeScene->GetECS().AddComponent<TagComponent>(entity, lightName);
+
+		// 添加变换组件
+		TransformComponent transform;
+		if (type == LightType::Directional) {
+			// 方向光放在场景上方
+			transform.transform.position = glm::vec3(0.0f, 10.0f, 0.0f);
+			transform.transform.rotation = glm::angleAxis(glm::radians(-45.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+		}
+		else {
+			// 点光源和聚光灯放在相机前方
+			transform.transform.position = cameraPos + cameraForward * 5.0f;
+		}
+		activeScene->GetECS().AddComponent<TransformComponent>(entity, transform);
+
+		// 添加灯光组件
 		activeScene->GetECS().AddComponent<LightComponent>(entity, light);
 
-		// 4. 自动选中
+		// 自动选中新创建的灯光
 		m_SelectedEntity = entity;
 		m_SelectedEntityName = lightName;
+		SyncTransformEditor(); // 同步变换数据到编辑器
 		RefreshEntityList();
+
+		ITR_INFO("Created {} at position: ({}, {}, {})",
+			lightName,
+			transform.transform.position.x,
+			transform.transform.position.y,
+			transform.transform.position.z);
 	}
 
 	/**

@@ -17,6 +17,7 @@ namespace Intro {
         {
             return Position;
         }
+        glm::vec3 GetFront() const;
         void OnUpdate(float deltaTime);
 
         // tuning
