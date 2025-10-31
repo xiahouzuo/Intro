@@ -1,231 +1,106 @@
-// ImGuiLayer.cpp
+Ôªø// ImGuiLayer.cpp
 #include "itrpch.h"
-#include "Intro/Application.h"
-#include "Intro/ECS/Components.h"
-#include "Intro/Renderer/ShapeGenerator.h"
 #include "ImGuiLayer.h"
+
+#include "Intro/Renderer/Renderer.h"
+#include "Intro/Config/ConfigObserver.h"
+#include "Intro/Application.h"
+#include "Intro/Renderer/ShapeGenerator.h"
+#include "Intro/RecourceManager/ResourceManager.h"
 #include "Platform/OpenGL/ImGuiOpenGLRenderer.h"
 #include "backends/imgui_impl_opengl3.h"
 #include "backends/imgui_impl_glfw.h"
 #include "misc/cpp/imgui_stdlib.h"
 #include "entt/entt.hpp"
-#include <unordered_set>
-#include <glm/gtc/quaternion.hpp>
-#include <glm/gtx/quaternion.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glm/gtc/quaternion.hpp>
+
+#include <glm/gtx/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 namespace Intro {
 
+	// -------------------------------------------------------------------------
+	// Construction / Destruction
+	// -------------------------------------------------------------------------
 	ImGuiLayer::ImGuiLayer(SceneManager* sceneManager, RendererLayer* rendererLayer)
-		: Layer("ImGuiLayer"), m_SceneManager(sceneManager), m_RendererLayer(rendererLayer),
-		m_TransformEditor(glm::vec3(0.0f), glm::quat(1.0f, 0.0f, 0.0f, 0.0f), glm::vec3(1.0f)),
-		m_EulerAngles(0.0f)
+		: Layer("ImGuiLayer")
+		, m_SceneManager(sceneManager)
+		, m_RendererLayer(rendererLayer)
 	{
-
-
-		defaultShader = std::make_shared<Shader>(
-			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/tempShader.vert",
-			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/tempShader.frag"
-		);
-		defaultMaterial = std::make_shared<Material>(defaultShader);
-
+		// ‰∏çÂú®ÊûÑÈÄ†Êó∂Â∞ùËØïÂä†ËΩΩËµÑÊ∫êÔºàÈÅøÂÖçÁ°¨ÁºñÁ†ÅË∑ØÂæÑÔºâ
 	}
 
 	ImGuiLayer::~ImGuiLayer()
 	{
-		ImGui::DestroyContext();
+		// Á°Æ‰øùÈáäÊîæ‰∏ä‰∏ãÊñáÔºàOnDetach ‰πü‰ºöÂÅöÔºâ
 	}
 
-	/**
-	 * ≥ı ºªØImGui…œœ¬Œƒ∫Õ∫Û∂À
-	 * ◊¢“‚£∫–Ë‘⁄OpenGL…œœ¬Œƒ¥¥Ω®∫Ûµ˜”√
-	 */
+	// -------------------------------------------------------------------------
+	// Lifecycle helpers
+	// -------------------------------------------------------------------------
 	void ImGuiLayer::OnAttach()
+	{
+		InitImGui();
+		RefreshEntityList();
+	}
+
+	void ImGuiLayer::OnDetach()
+	{
+		ShutdownImGui();
+	}
+
+	void ImGuiLayer::InitImGui()
 	{
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
-		ImGuiIO& io = ImGui::GetIO(); (void)io;
-
-		// ≈‰÷√ImGuiπ¶ƒ‹£∫∆Ù”√º¸≈Ãµº∫Ω°¢Õ£øø°¢∂‡ ”ø⁄
+		ImGuiIO& io = ImGui::GetIO();
 		io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-		// …Ë÷√—˘ ΩŒ™…Ó…´÷˜Ã‚
 		ImGui::StyleColorsDark();
-
-		//   ≈‰∂‡ ”ø⁄—˘ Ω
-		ImGuiStyle& style = ImGui::GetStyle();
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
+			ImGuiStyle& style = ImGui::GetStyle();
 			style.WindowRounding = 0.0f;
 			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
 		}
 
-		// ≥ı ºªØGLFW∫ÕOpenGL∫Û∂À
 		GLFWwindow* window = (GLFWwindow*)Application::Get().GetWindow().GetNativeWindow();
-		IM_ASSERT(window != nullptr);
+		IM_ASSERT(window);
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
 		ImGui_ImplOpenGL3_Init("#version 410");
 
 		ImGuizmo::SetImGuiContext(ImGui::GetCurrentContext());
-
-		// ≥ı ºÀ¢–¬ µÃÂ¡–±Ì
-		RefreshEntityList();
 	}
 
-	/**
-	 * «Â¿ÌImGui◊ ‘¥
-	 */
-	void ImGuiLayer::OnDetach()
+	void ImGuiLayer::ShutdownImGui()
 	{
-		// πÿ±’∫Û∂À≤¢œ˙ªŸ…œœ¬Œƒ
 		ImGui_ImplOpenGL3_Shutdown();
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
 	}
 
-	/**
-	 * √ø÷°∏¸–¬UI¬ﬂº≠
-	 * ¡˜≥Ã£∫ø™ º÷° -> ªÊ÷∆UI -> ‰÷»æUI -> ¥¶¿Ì∂‡ ”ø⁄
-	 */
-	void ImGuiLayer::OnUpdate(float deltaTime)
+	// -------------------------------------------------------------------------
+	// Frame management
+	// -------------------------------------------------------------------------
+	void ImGuiLayer::BeginFrame()
 	{
-		ImGuiIO& io = ImGui::GetIO();
-		Application& app = Application::Get();
-		// ∏¸–¬œ‘ æ≥ﬂ¥Á
-		io.DisplaySize = ImVec2(app.GetWindow().GetWidth(), app.GetWindow().GetHeight());
-
-		// ∏¸–¬ ±º‰‘ˆ¡ø
-		float time = (float)glfwGetTime();
-		io.DeltaTime = m_Time > 0.0f ? (time - m_Time) : (1.0f / 60.0f);
-		m_Time = time;
-
-		// ø™ º–¬÷°
 		ImGui_ImplGlfw_NewFrame();
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui::NewFrame();
 
-
-		// √ø÷°≥ı ºªØ ImGuizmo
 		ImGuizmo::BeginFrame();
+	}
 
-		// ªÊ÷∆UI◊Èº˛£®∞¥À≥–ÚªÊ÷∆£¨»∑±£≤ºæ÷’˝»∑£©
-		DrawMenuBar();          // ≤Àµ•¿∏
-		DrawDockSpaceHost();    // Õ£øø»›∆˜£®ª˘¥°≤ºæ÷£©
-		DrawViewport();         // ‰÷»æ ”ø⁄
-		ShowEntityManagerWindow(); //  µÃÂπ‹¿Ì∆˜
-		ShowSceneControlsWindow(); // ≥°æ∞øÿ÷∆
-
-		// »Ù”–—°÷– µÃÂ£¨Õ¨≤Ω ˝æ›≤¢œ‘ æºÏ≤È∆˜
-		if (m_SelectedEntity != entt::null)
-		{
-			SyncTransformEditor();
-			ShowEntityInspectorWindow();
-			RenderGizmo();
-		}
-
-		// œ‘ æƒ£–Õµº»Î¥∞ø⁄£®»Ùø™∆Ù£©
-		if (m_ShowImportWindow)
-		{
-			ShowImportModelWindow();
-		}
-
-		// --- ∏ƒ√˚µØ¥∞¥¶¿Ì£®»Áπ˚’˝‘⁄±‡º≠ Tag£© ---
-		if (m_IsEditingTag && m_EditingEntity != entt::null)
-		{
-			auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
-			if (!activeScene) {
-				// ≥°æ∞∂™ ßªÚ«–ªª£¨»°œ˚±‡º≠◊¥Ã¨
-				m_IsEditingTag = false;
-				m_EditingEntity = entt::null;
-				m_ShouldOpenRenamePopup = false;
-				m_RenamePopupNeedsFocus = false;
-			}
-			else {
-				// »Áπ˚…œ“ª÷°«Î«Û¥Úø™ popup£¨‘Ú‘⁄’‚“ª÷°¥Úø™£®÷ªµ˜”√“ª¥Œ£©
-				if (m_ShouldOpenRenamePopup) {
-					ImGui::OpenPopup("Rename Entity");
-					m_ShouldOpenRenamePopup = false;
-					// m_RenamePopupNeedsFocus “—‘⁄¥•∑¢¥¶…ËŒ™ true
-				}
-
-				// œ÷‘⁄≥¢ ‘œ‘ æ modal£®»Áπ˚…–Œ¥¥Úø™‘Ú BeginPopupModal ∑µªÿ false£©
-				if (ImGui::BeginPopupModal("Rename Entity", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
-				{
-					ImGui::Text("Enter new name:");
-					ImGui::Separator();
-
-					ImGui::SetNextItemWidth(350.0f);
-
-					// Ωˆ‘⁄µØ¥∞∏’¥Úø™ ±…Ë÷√º¸≈ÃΩπµ„“ª¥Œ£¨±‹√‚∏…»≈ Û±Íµ„ª˜
-					if (m_RenamePopupNeedsFocus) {
-						ImGui::SetKeyboardFocusHere();
-						m_RenamePopupNeedsFocus = false;
-					}
-
-					// InputText£∫±£¡Ù EnterReturnsTrue ÷ß≥÷∞¥ªÿ≥µÃ·Ωª
-					bool enterPressed = ImGui::InputText("##TagInput", m_TagEditBuffer, sizeof(m_TagEditBuffer), ImGuiInputTextFlags_EnterReturnsTrue);
-
-					// OK / Cancel ∞¥≈•œ÷‘⁄ª·œÏ”¶ Û±Íµ„ª˜
-					if (enterPressed || ImGui::Button("OK", ImVec2(120, 0)))
-					{
-						std::string newTag = std::string(m_TagEditBuffer);
-						// trim
-						auto trim = [](std::string& s) {
-							s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) { return !std::isspace(ch); }));
-							s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
-							};
-						trim(newTag);
-
-						if (!newTag.empty()) {
-							auto& ecs = activeScene->GetECS();
-							if (ecs.HasComponent<TagComponent>(m_EditingEntity)) {
-								ecs.GetComponent<TagComponent>(m_EditingEntity).Tag = newTag;
-							}
-							else {
-								ecs.AddComponent<TagComponent>(m_EditingEntity, newTag);
-							}
-
-							if (m_EditingEntity == m_SelectedEntity) {
-								m_SelectedEntityName = newTag;
-							}
-
-							// Õ¨≤Ω¡–±Ì“‘»∑±£œ‘ æ“ª÷¬
-							RefreshEntityList();
-						}
-
-						// πÿ±’µØ¥∞”Î±‡º≠◊¥Ã¨
-						m_IsEditingTag = false;
-						m_EditingEntity = entt::null;
-						ImGui::CloseCurrentPopup();
-					}
-
-					ImGui::SameLine();
-					if (ImGui::Button("Cancel", ImVec2(120, 0)))
-					{
-						// »°œ˚±‡º≠
-						m_IsEditingTag = false;
-						m_EditingEntity = entt::null;
-						m_RenamePopupNeedsFocus = false;
-						ImGui::CloseCurrentPopup();
-					}
-
-					ImGui::EndPopup();
-				} // if BeginPopupModal
-			} // else activeScene valid
-		} // if m_IsEditingTag
-
-
-
-		// œ÷‘⁄‰÷»æ ImGui£®‘≠”–£©
+	void ImGuiLayer::EndFrameAndRender()
+	{
 		ImGui::Render();
-
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
-		// ¥¶¿Ì∂‡ ”ø⁄£®±£≥÷”Î∆ΩÃ®¥∞ø⁄Õ¨≤Ω£©
+		ImGuiIO& io = ImGui::GetIO();
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
 		{
 			GLFWwindow* backup_current_context = glfwGetCurrentContext();
@@ -235,32 +110,61 @@ namespace Intro {
 		}
 	}
 
-	/**
-	 * ¥¥Ω®»´æ÷Õ£øø»›∆˜
-	 * ◊˜”√£∫◊˜Œ™À˘”–UI¥∞ø⁄µƒ∏˘»›∆˜£¨÷ß≥÷¥∞ø⁄Õœ◊ßÕ£øø
-	 */
+	// -------------------------------------------------------------------------
+	// Main update (called once per frame)
+	// -------------------------------------------------------------------------
+	void ImGuiLayer::OnUpdate(float /*deltaTime*/)
+	{
+		// Update ImGui IO timing and display size
+		ImGuiIO& io = ImGui::GetIO();
+		auto& app = Application::Get();
+		io.DisplaySize = ImVec2(app.GetWindow().GetWidth(), app.GetWindow().GetHeight());
+
+		float time = (float)glfwGetTime();
+		io.DeltaTime = m_Time > 0.0f ? (time - m_Time) : (1.0f / 60.0f);
+		m_Time = time;
+
+		BeginFrame();
+
+		// Draw UI
+		DrawMenuBar();
+		DrawDockSpaceHost();
+		DrawViewport();
+		ShowEntityManagerWindow();
+		ShowSceneControlsWindow();
+
+		if (m_ShowResourceBrowser) {
+			ShowResourceBrowserWindow();
+		}
+
+		if (m_SelectedEntity != entt::null)
+		{
+			SyncTransformEditor();
+			ShowEntityInspectorWindow();
+		}
+
+		if (m_ShowImportWindow) ShowImportModelWindow();
+
+		HandleRenamePopup();
+
+		EndFrameAndRender();
+	}
+
+	// -------------------------------------------------------------------------
+	// Dock / menu / main windows
+	// -------------------------------------------------------------------------
 	void ImGuiLayer::DrawDockSpaceHost()
 	{
 		static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
 		ImGuiViewport* viewport = ImGui::GetMainViewport();
 
-		// ªÒ»°≤Àµ•¿∏∏ﬂ∂»£∫¿˚”√°∞œ»ªÊ÷∆≤Àµ•¿∏°±µƒ«∞Ã·£¨»°µ±«∞¥∞ø⁄£®≤Àµ•¿∏£©µƒ∏ﬂ∂»
-//  ÷∂Ø÷∏∂®≤Àµ•¿∏∏ﬂ∂»£®±»»Á20œÒÀÿ£¨ø…∏˘æ› µº «Èøˆµ˜’˚£©
-		float menuBarHeight = 20.0f;
+		const float menuBarHeight = 20.0f;
 
 		ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + menuBarHeight));
 		ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - menuBarHeight));
-
-		// 1. µ˜’˚DockSpace»›∆˜Œª÷√£∫Y÷·∆´“∆≤Àµ•¿∏∏ﬂ∂»
-		ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + menuBarHeight));
-
-		// 2. µ˜’˚DockSpace»›∆˜≥ﬂ¥Á£∫∏ﬂ∂» =  ”ø⁄∏ﬂ∂» - ≤Àµ•¿∏∏ﬂ∂»
-		ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - menuBarHeight));
-
-		// ±£≥÷ ”ø⁄πÿ¡™°¢…Ë÷√¥∞ø⁄±Í÷æµ»£®‘≠¥˙¬Î≤ª±‰£©...
 		ImGui::SetNextWindowViewport(viewport->ID);
-		ImGuiWindowFlags host_window_flags = ImGuiWindowFlags_NoTitleBar; /* ∆‰À˚±Í÷æ */
 
+		ImGuiWindowFlags host_window_flags = ImGuiWindowFlags_NoTitleBar;
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 		ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
@@ -274,25 +178,31 @@ namespace Intro {
 		ImGui::End();
 	}
 
-	/**
-	 * ªÊ÷∆≤Àµ•¿∏
-	 * ∞¸∫¨£∫Œƒº˛≤Ÿ◊˜£®µº»Îƒ£–Õ£©°¢¥¥Ω® µÃÂ£®º∏∫ŒÃÂ£©µ»»Îø⁄
-	 */
 	void ImGuiLayer::DrawMenuBar()
 	{
-		if (ImGui::BeginMainMenuBar())
-		{
-			if (ImGui::BeginMenu("File"))
-			{
-				if (ImGui::MenuItem("Import Model..."))
-				{
-					m_ShowImportWindow = true; // ¥Úø™µº»Î¥∞ø⁄
-				}
-				ImGui::Separator();
-				ImGui::EndMenu();
-			}
+		if (!ImGui::BeginMainMenuBar()) return;
 
-			if (ImGui::BeginMenu("Create Primitive"))
+		if (ImGui::BeginMenu("File"))
+		{
+			if (ImGui::MenuItem("Import Model...")) m_ShowImportWindow = true;
+			ImGui::Separator();
+			if (ImGui::MenuItem("Save Config")) {
+				Config::Get().Save();
+			}
+			if (ImGui::MenuItem("Reload Config")) {
+				Config::Get().Load();
+			}
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("View")) {
+			//if (ImGui::MenuItem("Renderer Settings")) m_ShowRendererSettings = true;
+			//if (ImGui::MenuItem("Resource Manager")) m_ShowResourceManager = true;
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("Create"))
+		{
+			if (ImGui::BeginMenu("Primitive"))
 			{
 				if (ImGui::MenuItem("Cube")) CreatePrimitive(ShapeType::Cube);
 				if (ImGui::MenuItem("Sphere")) CreatePrimitive(ShapeType::Sphere);
@@ -300,7 +210,7 @@ namespace Intro {
 				ImGui::EndMenu();
 			}
 
-			if (ImGui::BeginMenu("Create Light"))
+			if (ImGui::BeginMenu("Light"))
 			{
 				if (ImGui::MenuItem("Directional Light")) CreateLight(LightType::Directional);
 				if (ImGui::MenuItem("Point Light")) CreateLight(LightType::Point);
@@ -308,15 +218,15 @@ namespace Intro {
 				ImGui::EndMenu();
 			}
 
-			ImGui::EndMainMenuBar();
+			ImGui::EndMenu();
 		}
+
+		ImGui::EndMainMenuBar();
 	}
 
-	/**
-	 * ªÊ÷∆‰÷»æ ”ø⁄
-	 * π¶ƒ‹£∫œ‘ æ≥°æ∞‰÷»æΩ·π˚£®¥”RendererLayerªÒ»°Œ∆¿Ì£©°¢ºÏ≤‚≥ﬂ¥Á±‰ªØ°¢¥¶¿ÌΩªª•◊¥Ã¨
-	 */
-	 // DrawViewport (ÃÊªªƒ„‘≠¿¥µƒ µœ÷)
+	// -------------------------------------------------------------------------
+	// Viewport (render texture)
+	// -------------------------------------------------------------------------
 	void ImGuiLayer::DrawViewport()
 	{
 		ImGui::Begin("Viewport");
@@ -327,10 +237,10 @@ namespace Intro {
 		Application::Get().SetViewportState(m_ViewportHovered, m_ViewportFocused, m_IsUsingGizmo);
 
 		ImVec2 avail = ImGui::GetContentRegionAvail();
-		if (avail.x < 1.0f) avail.x = 1.0f;
-		if (avail.y < 1.0f) avail.y = 1.0f;
+		avail.x = std::max(avail.x, 1.0f);
+		avail.y = std::max(avail.y, 1.0f);
 
-		// ≥ﬂ¥Á±‰ªØºÏ≤‚£®±£≥÷ƒ„‘≠¬ﬂº≠£©
+		// Ê£ÄÊµãÂ§ßÂ∞èÂèòÂåñÂπ∂ÈÄöÁü• RendererLayer
 		if (m_RendererLayer &&
 			((uint32_t)avail.x != (uint32_t)m_LastViewportSize.x ||
 				(uint32_t)avail.y != (uint32_t)m_LastViewportSize.y))
@@ -339,7 +249,6 @@ namespace Intro {
 			m_LastViewportSize = avail;
 		}
 
-		// œ‘ æ‰÷»æŒ∆¿Ì
 		void* texID = nullptr;
 		if (m_RendererLayer)
 		{
@@ -350,14 +259,12 @@ namespace Intro {
 		if (texID)
 		{
 			ImGui::Image(texID, avail, ImVec2(0, 1), ImVec2(1, 0));
-
-			// **πÿº¸£∫ π”√ Image µƒ µº  rect ¿¥…Ë÷√ ”ø⁄∆´“∆”Î≥ﬂ¥Á**
 			ImVec2 imageMin = ImGui::GetItemRectMin();
 			ImVec2 imageMax = ImGui::GetItemRectMax();
 			m_ViewportOffset = imageMin;
 			m_ViewportSize = ImVec2(imageMax.x - imageMin.x, imageMax.y - imageMin.y);
 
-			// **‘⁄’‚¿Ô÷±Ω”ªÊ÷∆ gizmo£®±£÷§ π”√∏√¥∞ø⁄µƒ drawlist / rect£©**
+			// Âú®ËßÜÂè£ÂÜÖÁªòÂà∂ gizmoÔºàÂ¶ÇÊûúÈÄâ‰∏≠ÂÆû‰ΩìÔºâ
 			if (m_SelectedEntity != entt::null)
 				RenderGizmo();
 		}
@@ -371,59 +278,53 @@ namespace Intro {
 		ImGui::End();
 	}
 
-
-
-	/**
-	 * œ‘ æ µÃÂπ‹¿Ì∆˜¥∞ø⁄
-	 * π¶ƒ‹£∫¡–≥ˆ≥°æ∞÷–À˘”– µÃÂ°¢÷ß≥÷—°‘Ò∫ÕÕœ◊ß
-	 */
-	void ImGuiLayer::ShowEntityManagerWindow() {
+	// -------------------------------------------------------------------------
+	// Entity manager / inspector / scene controls
+	// -------------------------------------------------------------------------
+	void ImGuiLayer::ShowEntityManagerWindow()
+	{
 		ImGui::Begin("Entity Manager");
 
-		if (ImGui::Button("Refresh List")) {
-			RefreshEntityList();
-		}
+		if (ImGui::Button("Refresh List")) RefreshEntityList();
 		ImGui::Separator();
 
 		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
 		if (!activeScene) { ImGui::Text("No active scene"); ImGui::End(); return; }
 
 		auto& registry = activeScene->GetECS().GetRegistry();
-		for (auto entity : m_CachedEntities) {
+		for (auto entity : m_CachedEntities)
+		{
 			if (!registry.valid(entity)) continue;
 
-			// ªÒ»°√˚≥∆
 			std::string name = "Entity " + std::to_string(static_cast<uint32_t>(entity));
-			if (registry.any_of<TagComponent>(entity)) {
+			if (registry.any_of<TagComponent>(entity))
 				name = registry.get<TagComponent>(entity).Tag;
-			}
 
 			ImGui::PushID(static_cast<uint32_t>(entity));
 			bool isSelected = (m_SelectedEntity == entity);
-			if (ImGui::Selectable(name.c_str(), isSelected)) {
+			if (ImGui::Selectable(name.c_str(), isSelected))
+			{
 				m_SelectedEntity = entity;
 				m_SelectedEntityName = name;
 			}
 
-			// ∏¸Œ»Ω°µƒ”“º¸¥¶¿Ì£∫ºÏ≤‚µ±«∞œÓ «∑Ò±ª”“º¸µ„ª˜
-			if (ImGui::IsItemClicked(1)) { // right click
+			if (ImGui::IsItemClicked(1))
+			{
 				m_EditingEntity = entity;
 				m_IsEditingTag = true;
-				// ≥ı ºªØª∫≥Â«¯
-				if (registry.any_of<TagComponent>(entity)) {
+				if (registry.any_of<TagComponent>(entity))
+				{
 					std::string t = registry.get<TagComponent>(entity).Tag;
 					std::strncpy(m_TagEditBuffer, t.c_str(), sizeof(m_TagEditBuffer) - 1);
 				}
-				else {
+				else
+				{
 					std::strncpy(m_TagEditBuffer, name.c_str(), sizeof(m_TagEditBuffer) - 1);
 				}
 				m_TagEditBuffer[sizeof(m_TagEditBuffer) - 1] = '\0';
-
-				// «Î«Û‘⁄œ¬“ª÷°¥Úø™ modal£¨≤¢‘⁄¥Úø™∫Û…Ë÷√Ωπµ„“ª¥Œ
 				m_ShouldOpenRenamePopup = true;
 				m_RenamePopupNeedsFocus = true;
 			}
-
 
 			ImGui::PopID();
 		}
@@ -431,152 +332,122 @@ namespace Intro {
 		ImGui::End();
 	}
 
+	void ImGuiLayer::ShowEntityInspectorWindow()
+	{
+		ImGui::Begin("Inspector");
 
+		if (m_SelectedEntity == entt::null) { ImGui::Text("No entity selected"); ImGui::End(); return; }
+		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
+		if (!activeScene) { ImGui::End(); return; }
 
-	/**
-	 * œ‘ æ µÃÂºÏ≤È∆˜¥∞ø⁄
-	 * π¶ƒ‹£∫±‡º≠—°÷– µÃÂµƒ◊Èº˛£®ƒø«∞÷ß≥÷Transform£©
-	 */
-void ImGuiLayer::ShowEntityInspectorWindow() {
-    ImGui::Begin("Inspector");
-    
-    if (m_SelectedEntity == entt::null) {
-        ImGui::Text("No entity selected");
-        ImGui::End();
-        return;
-    }
+		auto& registry = activeScene->GetECS().GetRegistry();
+		if (!registry.valid(m_SelectedEntity)) { m_SelectedEntity = entt::null; ImGui::End(); return; }
 
-    auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
-    if (!activeScene) {
-        ImGui::End();
-        return;
-    }
+		ImGui::Text("Entity: %s", m_SelectedEntityName.c_str());
+		ImGui::Separator();
 
-    auto& registry = activeScene->GetECS().GetRegistry();
-    if (!registry.valid(m_SelectedEntity)) {
-        m_SelectedEntity = entt::null;
-        ImGui::End();
-        return;
-    }
+		if (registry.any_of<TransformComponent>(m_SelectedEntity))
+		{
+			if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				bool transformChanged = false;
 
-    ImGui::Text("Entity: %s", m_SelectedEntityName.c_str());
-    ImGui::Separator();
-
-    // ±‡º≠Transform◊Èº˛
-    if (registry.any_of<TransformComponent>(m_SelectedEntity)) {
-        if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen)) {
-            ImGui::DragFloat3("Position", &m_TransformEditor.position.x, 0.1f);
-            ImGui::DragFloat3("Rotation", &m_EulerAngles.x, 1.0f);
-            ImGui::DragFloat3("Scale", &m_TransformEditor.scale.x, 0.1f);
-
-            if (ImGui::Button("Apply Transform")) {
-                m_TransformEditor.rotation = glm::quat(glm::radians(m_EulerAngles));
-                UpdateSelectedEntityTransform();
-            }
-        }
-    }
-
-    // –¬‘ˆ£∫±‡º≠Light◊Èº˛
-	// ‘⁄ Light ◊Èº˛±‡º≠≤ø∑÷ÃÌº”£∫
-	if (registry.any_of<LightComponent>(m_SelectedEntity)) {
-		if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen)) {
-			auto& light = registry.get<LightComponent>(m_SelectedEntity);
-
-			// µ∆π‚¿‡–Õ
-			const char* lightTypes[] = { "Directional", "Point", "Spot" };
-			int currentType = static_cast<int>(light.Type);
-			if (ImGui::Combo("Type", &currentType, lightTypes, 3)) {
-				light.Type = static_cast<LightType>(currentType);
-			}
-
-			// —’…´∫Õ«ø∂»
-			ImGui::ColorEdit3("Color", &light.Color.r);
-			ImGui::DragFloat("Intensity", &light.Intensity, 0.1f, 0.0f, 10.0f);
-
-			// ∑ΩœÚπ‚Ãÿ∂®…Ë÷√
-			if (light.Type == LightType::Directional) {
-				ImGui::Text("Direction controlled by entity rotation");
-
-				// œ‘ æµ±«∞∑ΩœÚ–≈œ¢
-				if (registry.any_of<TransformComponent>(m_SelectedEntity)) {
-					auto& transform = registry.get<TransformComponent>(m_SelectedEntity);
-					glm::vec3 worldDirection = transform.transform.rotation * light.Direction;
-					ImGui::Text("World Direction: (%.2f, %.2f, %.2f)",
-						worldDirection.x, worldDirection.y, worldDirection.z);
+				// Position
+				glm::vec3 oldPosition = m_TransformEditor.position;
+				ImGui::DragFloat3("Position", &m_TransformEditor.position.x, 0.1f);
+				if (m_TransformEditor.position != oldPosition) {
+					transformChanged = true;
 				}
 
-				// øÏÀŸ∑ΩœÚ‘§…Ë∞¥≈•
-				if (ImGui::Button("Down")) {
-					auto& transform = registry.get<TransformComponent>(m_SelectedEntity);
-					transform.transform.rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f); // ƒ¨»œ≥ØœÚ
-					SyncTransformEditor(); // Õ¨≤ΩµΩ±‡º≠∆˜
+				// Rotation (Euler angles)
+				glm::vec3 oldEuler = m_EulerAngles;
+				ImGui::DragFloat3("Rotation", &m_EulerAngles.x, 1.0f);
+				if (m_EulerAngles != oldEuler) {
+					m_TransformEditor.rotation = glm::quat(glm::radians(m_EulerAngles));
+					transformChanged = true;
 				}
-				ImGui::SameLine();
-				if (ImGui::Button("Up")) {
-					auto& transform = registry.get<TransformComponent>(m_SelectedEntity);
-					transform.transform.rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-					SyncTransformEditor();
-				}
-				ImGui::SameLine();
-				if (ImGui::Button("Forward")) {
-					auto& transform = registry.get<TransformComponent>(m_SelectedEntity);
-					transform.transform.rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1.0f, 0.0f, 0.0f));
-					SyncTransformEditor();
-				}
-			}
 
-			// µ„π‚‘¥/æ€π‚µ∆…Ë÷√
-			if (light.Type == LightType::Point || light.Type == LightType::Spot) {
-				ImGui::DragFloat("Range", &light.Range, 0.1f, 0.1f, 100.0f);
-			}
+				// Scale
+				glm::vec3 oldScale = m_TransformEditor.scale;
+				ImGui::DragFloat3("Scale", &m_TransformEditor.scale.x, 0.1f);
+				if (m_TransformEditor.scale != oldScale) {
+					transformChanged = true;
+				}
 
-			// æ€π‚µ∆Ãÿ∂®…Ë÷√
-			if (light.Type == LightType::Spot) {
-				ImGui::DragFloat("Spot Angle", &light.SpotAngle, 1.0f, 1.0f, 89.0f);
-				ImGui::DragFloat("Inner Angle", &light.InnerSpotAngle, 1.0f, 1.0f, light.SpotAngle);
+				// ÂÆûÊó∂Êõ¥Êñ∞ÂèòÊç¢
+				if (transformChanged) {
+					UpdateSelectedEntityTransform();
+				}
+
+				// ‰øùÁïôÊåâÈíÆ‰Ωú‰∏∫Â§áÁî®
+				if (ImGui::Button("Reset Transform"))
+				{
+					m_TransformEditor.position = glm::vec3(0.0f);
+					m_EulerAngles = glm::vec3(0.0f);
+					m_TransformEditor.rotation = glm::quat(1.0f, 0.0f, 0.0f, 0.0f);
+					m_TransformEditor.scale = glm::vec3(1.0f);
+					UpdateSelectedEntityTransform();
+				}
 			}
 		}
+
+		if (registry.any_of<LightComponent>(m_SelectedEntity))
+		{
+			if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				auto& light = registry.get<LightComponent>(m_SelectedEntity);
+				const char* types[] = { "Directional", "Point", "Spot" };
+				int cur = (int)light.Type;
+				if (ImGui::Combo("Type", &cur, types, 3)) light.Type = (LightType)cur;
+
+				ImGui::ColorEdit3("Color", &light.Color.r);
+				ImGui::DragFloat("Intensity", &light.Intensity, 0.1f, 0.0f, 10.0f);
+				if (light.Type == LightType::Directional)
+				{
+					ImGui::Text("Direction controlled by entity rotation");
+					if (ImGui::Button("Down")) { auto& t = registry.get<TransformComponent>(m_SelectedEntity); t.transform.rotation = glm::quat(1.0f, 0, 0, 0); SyncTransformEditor(); }
+					ImGui::SameLine();
+					if (ImGui::Button("Up")) { auto& t = registry.get<TransformComponent>(m_SelectedEntity); t.transform.rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(1, 0, 0)); SyncTransformEditor(); }
+					ImGui::SameLine();
+					if (ImGui::Button("Forward")) { auto& t = registry.get<TransformComponent>(m_SelectedEntity); t.transform.rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1, 0, 0)); SyncTransformEditor(); }
+				}
+
+				if (light.Type == LightType::Point || light.Type == LightType::Spot)
+					ImGui::DragFloat("Range", &light.Range, 0.1f, 0.1f, 100.0f);
+
+				if (light.Type == LightType::Spot)
+				{
+					ImGui::DragFloat("Spot Angle", &light.SpotAngle, 1.0f, 1.0f, 89.0f);
+					ImGui::DragFloat("Inner Angle", &light.InnerSpotAngle, 1.0f, 1.0f, light.SpotAngle);
+				}
+			}
+		}
+
+		ImGui::End();
 	}
 
-    ImGui::End();
-}
-
-	/**
-	 * œ‘ æ≥°æ∞øÿ÷∆¥∞ø⁄
-	 * π¶ƒ‹£∫≥°æ∞º∂±µƒøÿ÷∆£®»Á«Âø’≥°æ∞°¢±£¥Ê≥°æ∞µ»£©
-	 */
 	void ImGuiLayer::ShowSceneControlsWindow()
 	{
 		ImGui::Begin("Scene Controls");
 
-		//  æ¿˝£∫«Âø’≥°æ∞∞¥≈•
 		if (ImGui::Button("Clear Scene") && m_SceneManager)
 		{
-			// m_SceneManager->ClearActiveScene(); //  µº œÓƒø÷– µœ÷«Âø’¬ﬂº≠
+			// Â¶ÇÊûú‰Ω†ÂÆûÁé∞‰∫Ü ClearActiveSceneÔºåÊîæÂºÄÊ≥®Èáä
+			// m_SceneManager->ClearActiveScene();
 		}
-
 		ImGui::Separator();
 
-		// ==== Gizmo ≤Ÿ◊˜ ====
 		ImGui::Text("Gizmo Operation:");
-		if (ImGui::RadioButton("Translate (W)", m_GizmoOperation == ImGuizmo::TRANSLATE))
-			m_GizmoOperation = ImGuizmo::TRANSLATE;
+		if (ImGui::RadioButton("Translate (W)", m_GizmoOperation == ImGuizmo::TRANSLATE)) m_GizmoOperation = ImGuizmo::TRANSLATE;
 		ImGui::SameLine();
-		if (ImGui::RadioButton("Rotate (E)", m_GizmoOperation == ImGuizmo::ROTATE))
-			m_GizmoOperation = ImGuizmo::ROTATE;
+		if (ImGui::RadioButton("Rotate (E)", m_GizmoOperation == ImGuizmo::ROTATE)) m_GizmoOperation = ImGuizmo::ROTATE;
 		ImGui::SameLine();
-		if (ImGui::RadioButton("Scale (R)", m_GizmoOperation == ImGuizmo::SCALE))
-			m_GizmoOperation = ImGuizmo::SCALE;
-
-		ImGui::Spacing();
+		if (ImGui::RadioButton("Scale (R)", m_GizmoOperation == ImGuizmo::SCALE)) m_GizmoOperation = ImGuizmo::SCALE;
 
 		bool isLocal = (m_GizmoMode == ImGuizmo::LOCAL);
-		if (ImGui::Checkbox("Local Space", &isLocal))
-			m_GizmoMode = isLocal ? ImGuizmo::LOCAL : ImGuizmo::WORLD;
+		if (ImGui::Checkbox("Local Space", &isLocal)) m_GizmoMode = isLocal ? ImGuizmo::LOCAL : ImGuizmo::WORLD;
 
 		ImGui::Separator();
-
-		// ==== øÏΩ›Ã· æ ====
 		ImGui::TextUnformatted("Shortcuts:");
 		ImGui::BulletText("W - Translate");
 		ImGui::BulletText("E - Rotate");
@@ -586,10 +457,9 @@ void ImGuiLayer::ShowEntityInspectorWindow() {
 		ImGui::End();
 	}
 
-	/**
-	 * œ‘ æƒ£–Õµº»Î¥∞ø⁄
-	 * π¶ƒ‹£∫ ‰»Îƒ£–Õ¬∑æ∂≤¢µº»Î
-	 */
+	// -------------------------------------------------------------------------
+	// Import model window
+	// -------------------------------------------------------------------------
 	void ImGuiLayer::ShowImportModelWindow()
 	{
 		ImGui::Begin("Import Model", &m_ShowImportWindow);
@@ -598,79 +468,202 @@ void ImGuiLayer::ShowEntityInspectorWindow() {
 		ImGui::SameLine();
 		if (ImGui::Button("Browse"))
 		{
-			//  µº œÓƒø÷–ø…µ˜”√Œƒº˛—°‘Ò∂‘ª∞øÚ£®»Á π”√nfdø‚£©
-			// m_ModelImportPath = FileDialogs::OpenFile("Model Files (*.obj *.fbx *.gltf)");
+			// Êñá‰ª∂ÂØπËØùÊ°ÜÔºöÁî±‰Ω†ÈÄâÊã©ÁöÑÂ∫ìÂÆûÁé∞Ôºànfd Á≠âÔºâ
 		}
 
 		if (ImGui::Button("Import"))
 		{
 			if (!m_ModelImportPath.empty())
 			{
-				ImportModel(m_ModelImportPath);
-				m_ShowImportWindow = false;
+				if (ImportModel(m_ModelImportPath))
+					m_ShowImportWindow = false;
 			}
 		}
 
 		ImGui::End();
 	}
 
-	/**
-	 * À¢–¬ µÃÂ¡–±Ì£®¥”≥°æ∞Õ¨≤Ω£©
-	 * ¬ﬂº≠£∫ ’ºØÀ˘”–∞¸∫¨TransformComponentµƒ µÃÂ£®»∑±£ «ø…‰÷»æ/ø…Ωªª•µƒ µÃÂ£©
-	 */
+	// -------------------------------------------------------------------------
+	// Rename modal handling
+	// -------------------------------------------------------------------------
+	void ImGuiLayer::HandleRenamePopup()
+	{
+		if (!m_IsEditingTag || m_EditingEntity == entt::null) return;
+
+		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
+		if (!activeScene)
+		{
+			m_IsEditingTag = false;
+			m_EditingEntity = entt::null;
+			m_ShouldOpenRenamePopup = false;
+			m_RenamePopupNeedsFocus = false;
+			return;
+		}
+
+		if (m_ShouldOpenRenamePopup)
+		{
+			ImGui::OpenPopup("Rename Entity");
+			m_ShouldOpenRenamePopup = false;
+		}
+
+		if (ImGui::BeginPopupModal("Rename Entity", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+		{
+			ImGui::Text("Enter new name:");
+			ImGui::Separator();
+			ImGui::SetNextItemWidth(350.0f);
+
+			if (m_RenamePopupNeedsFocus)
+			{
+				ImGui::SetKeyboardFocusHere();
+				m_RenamePopupNeedsFocus = false;
+			}
+
+			bool enterPressed = ImGui::InputText("##TagInput", m_TagEditBuffer, sizeof(m_TagEditBuffer), ImGuiInputTextFlags_EnterReturnsTrue);
+
+			if (enterPressed || ImGui::Button("OK", ImVec2(120, 0)))
+			{
+				std::string newTag = std::string(m_TagEditBuffer);
+				// trim
+				auto trim = [](std::string& s) {
+					s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) { return !std::isspace(ch); }));
+					s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), s.end());
+					};
+				trim(newTag);
+
+				if (!newTag.empty())
+				{
+					auto& ecs = activeScene->GetECS();
+					if (ecs.HasComponent<TagComponent>(m_EditingEntity))
+						ecs.GetComponent<TagComponent>(m_EditingEntity).Tag = newTag;
+					else
+						ecs.AddComponent<TagComponent>(m_EditingEntity, newTag);
+
+					if (m_EditingEntity == m_SelectedEntity) m_SelectedEntityName = newTag;
+					RefreshEntityList();
+				}
+
+				m_IsEditingTag = false;
+				m_EditingEntity = entt::null;
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::SameLine();
+			if (ImGui::Button("Cancel", ImVec2(120, 0)))
+			{
+				m_IsEditingTag = false;
+				m_EditingEntity = entt::null;
+				m_RenamePopupNeedsFocus = false;
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::EndPopup();
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Gizmo
+	// -------------------------------------------------------------------------
+	void ImGuiLayer::RenderGizmo()
+	{
+		// Âü∫Êú¨Ê£ÄÊü•
+		if (m_SelectedEntity == entt::null || !m_RendererLayer || !m_SceneManager) return;
+
+		auto* activeScene = m_SceneManager->GetActiveScene();
+		if (!activeScene) return;
+
+		auto& registry = activeScene->GetECS().GetRegistry();
+		if (!registry.valid(m_SelectedEntity)) { m_SelectedEntity = entt::null; return; }
+		if (!registry.any_of<TransformComponent>(m_SelectedEntity)) return;
+
+		auto camera = m_RendererLayer->GetCamera();
+		glm::mat4 view = camera.GetViewMat();
+		glm::mat4 proj = camera.GetProjectionMat();
+
+		// ËÆæÁΩÆ ImGuizmo ÂØπÂ∫î drawlist ‰∏é rect
+		ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
+		ImGuizmo::SetRect(m_ViewportOffset.x, m_ViewportOffset.y, m_ViewportSize.x, m_ViewportSize.y);
+
+		auto& tc = registry.get<TransformComponent>(m_SelectedEntity);
+		glm::mat4 model = glm::translate(glm::mat4(1.0f), tc.transform.position) *
+			glm::toMat4(tc.transform.rotation) *
+			glm::scale(glm::mat4(1.0f), tc.transform.scale);
+
+		// snap Âà§ÂÆöÔºà‰ΩøÁî® ImGui IOÔºâ
+		ImGuiIO& io = ImGui::GetIO();
+		bool useSnap = io.KeyCtrl;
+		float snapValues[3] = { 0.5f, 0.5f, 0.5f };
+		if (m_GizmoOperation == ImGuizmo::ROTATE) { snapValues[0] = snapValues[1] = snapValues[2] = 15.0f; }
+		else if (m_GizmoOperation == ImGuizmo::SCALE) { snapValues[0] = snapValues[1] = snapValues[2] = 0.1f; }
+
+		ImGuizmo::Manipulate(glm::value_ptr(view), glm::value_ptr(proj),
+			m_GizmoOperation, m_GizmoMode,
+			glm::value_ptr(model), nullptr, useSnap ? snapValues : nullptr);
+
+		m_IsUsingGizmo = ImGuizmo::IsUsing();
+		m_IsOverGizmo = ImGuizmo::IsOver();
+
+		Application::Get().SetViewportState(m_ViewportHovered, m_ViewportFocused, m_IsUsingGizmo);
+
+		if (m_IsUsingGizmo)
+		{
+			float translation[3], rotationEulerDeg[3], scaleArr[3];
+			ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(model), translation, rotationEulerDeg, scaleArr);
+
+			glm::vec3 newTranslation(translation[0], translation[1], translation[2]);
+			glm::vec3 newScale(scaleArr[0], scaleArr[1], scaleArr[2]);
+			glm::quat newQuat = glm::quat_cast(glm::mat3(model));
+
+			auto& comp = registry.get<TransformComponent>(m_SelectedEntity);
+			comp.transform.position = newTranslation;
+			comp.transform.rotation = newQuat;
+			comp.transform.scale = newScale;
+
+			m_TransformEditor.position = newTranslation;
+			m_TransformEditor.rotation = newQuat;
+			m_TransformEditor.scale = newScale;
+			m_EulerAngles = glm::degrees(glm::eulerAngles(newQuat));
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Utilities: entity list, import, create primitives/lights, transform sync
+	// -------------------------------------------------------------------------
 	void ImGuiLayer::RefreshEntityList()
 	{
 		m_CachedEntities.clear();
 		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
-		if (!activeScene)
-			return;
+		if (!activeScene) return;
 
 		auto& registry = activeScene->GetECS().GetRegistry();
-		std::unordered_set<entt::entity> entities; // ”√set»•÷ÿ
-
-		//  ’ºØÀ˘”–”–TransformComponentµƒ µÃÂ£®ª˘¥°◊Èº˛£©
+		std::unordered_set<entt::entity> set;
 		auto view = registry.view<TransformComponent>();
-		for (auto entity : view)
-		{
-			entities.insert(entity);
-		}
-
-		// ◊™ªªŒ™vector±„”⁄±È¿˙
-		m_CachedEntities.assign(entities.begin(), entities.end());
+		for (auto e : view) set.insert(e);
+		m_CachedEntities.assign(set.begin(), set.end());
 	}
 
-	/**
-	 * µº»Îƒ£–Õ≤¢¥¥Ω® µÃÂ
-	 * @param modelPath ƒ£–ÕŒƒº˛¬∑æ∂
-	 * @return  «∑Òµº»Î≥…π¶
-	 */
 	bool ImGuiLayer::ImportModel(const std::string& modelPath)
 	{
 		if (!m_SceneManager) return false;
-
 		auto* activeScene = m_SceneManager->GetActiveScene();
 		if (!activeScene) return false;
 
-		auto model = std::make_shared<Model>(modelPath);
+		auto model = ResourceManager::Get().LoadModel(modelPath);
 		if (model->GetMeshes().empty()) {
 			ITR_ERROR("Failed to load model: {}", modelPath);
 			return false;
 		}
 
 		auto entity = activeScene->GetECS().CreateEntity();
-		activeScene->GetECS().GetRegistry().emplace<TagComponent>(entity, "model");
-		activeScene->GetECS().GetRegistry().emplace<TransformComponent>(entity);
-		activeScene->GetECS().GetRegistry().emplace<ModelComponent>(entity, model);
-		activeScene->GetECS().GetRegistry().emplace<MaterialComponent>(entity, defaultMaterial);
+		auto& reg = activeScene->GetECS().GetRegistry();
+		reg.emplace<TagComponent>(entity, "model");
+		reg.emplace<TransformComponent>(entity);
+		reg.emplace<ModelComponent>(entity, model);
+		reg.emplace<MaterialComponent>(entity, m_DefaultMaterial ? m_DefaultMaterial : std::shared_ptr<Material>());
 
 		RefreshEntityList();
 		return true;
 	}
 
-	/**
-	 * ¥¥Ω®ª˘¥°º∏∫ŒÃÂ µÃÂ
-	 * @param type º∏∫ŒÃÂ¿‡–Õ£®¡¢∑ΩÃÂ°¢«ÚÃÂµ»£©
-	 */
 	void ImGuiLayer::CreatePrimitive(ShapeType type)
 	{
 		if (!m_SceneManager) return;
@@ -681,398 +674,557 @@ void ImGuiLayer::ShowEntityInspectorWindow() {
 		std::vector<Vertex> verts;
 		std::vector<unsigned int> inds;
 
-		// …˙≥…Õ¯∏Ò∂•µ„”ÎÀ˜“˝£®∏˘æ› ShapeType µ˜”√ ShapeGenerator£©
-		switch (type)
-		{
-		case ShapeType::Cube:
-		{
-			auto pair = ShapeGenerator::GenerateCube(1.0f); // ºŸ…Ë∑µªÿ std::pair<std::vector<Vertex>, std::vector<unsigned int>>
-			verts = std::move(pair.first);
-			inds = std::move(pair.second);
-			name = "Cube";
-			break;
+		switch (type) {
+		case ShapeType::Cube: {
+			auto p = ShapeGenerator::GenerateCube(1.0f);
+			verts = std::move(p.first); inds = std::move(p.second); name = "Cube"; break;
 		}
-		case ShapeType::Sphere:
-		{
-			auto pair = ShapeGenerator::GenerateSphere(0.5f, 36, 18);
-			verts = std::move(pair.first);
-			inds = std::move(pair.second);
-			name = "Sphere";
-			break;
+		case ShapeType::Sphere: {
+			auto p = ShapeGenerator::GenerateSphere(0.5f, 36, 18);
+			verts = std::move(p.first); inds = std::move(p.second); name = "Sphere"; break;
 		}
-		case ShapeType::Plane:
-		{
-			auto pair = ShapeGenerator::GeneratePlane(2.0f, 2.0f, 1, 1);
-			verts = std::move(pair.first);
-			inds = std::move(pair.second);
-			name = "Plane";
-			break;
+		case ShapeType::Plane: {
+			auto p = ShapeGenerator::GeneratePlane(2.0f, 2.0f, 1, 1);
+			verts = std::move(p.first); inds = std::move(p.second); name = "Plane"; break;
 		}
-		default:
-			return;
+		default: return;
 		}
 
-		//  π”√ø’µƒŒ∆¿Ì¡–±Ì¥¥Ω® Mesh£®ƒ„µƒ Mesh ππ‘Ï–Ë“™ textures ≤Œ ˝£©
-		std::vector<std::shared_ptr<Intro::Texture>> emptyTextures;
-		auto meshPtr = std::make_shared<Intro::Mesh>(std::move(verts), std::move(inds), std::move(emptyTextures));
+		std::vector<std::shared_ptr<Texture>> emptyTextures;
+		auto meshPtr = std::make_shared<Mesh>(std::move(verts), std::move(inds), std::move(emptyTextures));
 
-		// Ω´ Mesh ∑≈»Î ECS£®ºŸ…Ë activeScene->GetECS().CreateEntity() ∑µªÿ entt::entity
-		// «“ registry.emplace<T>(entity, ...) ø…”√£©
 		auto entity = activeScene->GetECS().CreateEntity();
-		auto& registry = activeScene->GetECS().GetRegistry();
+		auto& reg = activeScene->GetECS().GetRegistry();
+		reg.emplace<TagComponent>(entity, name);
+		reg.emplace<TransformComponent>(entity);
+		reg.emplace<MeshComponent>(entity, meshPtr);
+		reg.emplace<MaterialComponent>(entity, m_DefaultMaterial ? m_DefaultMaterial : std::shared_ptr<Material>());
 
-		// ÃÌº”◊Èº˛ °™°™ ∞¥ƒ„π§≥Ã÷–◊Èº˛µƒ∂®“Â¿¥–¥£®œ¬√Ê π”√¡Àƒ„÷Æ«∞∏¯≥ˆµƒ MeshComponent ∂®“Â£©
-		registry.emplace<TagComponent>(entity, name);
-		registry.emplace<TransformComponent>(entity); // ƒ¨»œ±‰ªª
-		registry.emplace<MeshComponent>(entity, meshPtr);
-		registry.emplace<MaterialComponent>(entity, defaultMaterial);
-
-		// »Áπ˚ƒ„µƒ±‡º≠∆˜”–À¢–¬ µÃÂ¡–±Ìµƒ∫Ø ˝£¨µ˜”√À¸£®∑Ω∑®√˚ø…ƒ‹≤ªÕ¨£©
 		RefreshEntityList();
 	}
 
-	void ImGuiLayer::CreateLight(LightType type) {
+	void ImGuiLayer::CreateLight(LightType type)
+	{
 		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
-		if (!activeScene) return;
+		if (!activeScene || !m_RendererLayer) return;
 
-		// ªÒ»°œ‡ª˙Œª÷√◊˜Œ™≤Œøº
-		auto& camera = m_RendererLayer->GetCamera();
-		glm::vec3 cameraPos = camera.GetPosition();
-		glm::vec3 cameraForward = camera.GetFront();
+		auto camera = m_RendererLayer->GetCamera();
+		glm::vec3 camPos = camera.GetPosition();
+		glm::vec3 camForward = camera.GetFront();
 
-		// ¥¥Ω® µÃÂ
 		auto entity = activeScene->CreateEntity();
 		std::string lightName;
-
-		// …Ë÷√µ∆π‚◊Èº˛
 		LightComponent light;
 		light.Type = type;
-		light.Color = glm::vec3(1.0f, 1.0f, 1.0f);
+		light.Color = glm::vec3(1.0f);
 
 		switch (type) {
 		case LightType::Directional:
 			lightName = "Directional Light";
 			light.Intensity = 1.0f;
-			light.Direction = glm::vec3(0.0f, -1.0f, 0.0f); // ƒ¨»œœÚœ¬
+			light.Direction = glm::vec3(0.0f, -1.0f, 0.0f);
 			break;
-
 		case LightType::Point:
 			lightName = "Point Light";
 			light.Intensity = 2.0f;
 			light.Range = 10.0f;
-			light.Color = glm::vec3(1.0f, 0.9f, 0.8f); // ≈Ø…´µ˜
 			break;
-
 		case LightType::Spot:
 			lightName = "Spot Light";
 			light.Intensity = 3.0f;
 			light.Range = 15.0f;
 			light.SpotAngle = 45.0f;
 			light.InnerSpotAngle = 30.0f;
-			light.Direction = glm::vec3(0.0f, 0.0f, -1.0f); // œÚ«∞
-			light.Color = glm::vec3(1.0f, 1.0f, 1.0f);
+			light.Direction = glm::vec3(0.0f, 0.0f, -1.0f);
 			break;
 		}
 
-		// ÃÌº”±Í«©◊Èº˛
 		activeScene->GetECS().AddComponent<TagComponent>(entity, lightName);
 
-		// ÃÌº”±‰ªª◊Èº˛
-		TransformComponent transform;
+		TransformComponent tc;
 		if (type == LightType::Directional) {
-			// ∑ΩœÚπ‚∑≈‘⁄≥°æ∞…œ∑Ω
-			transform.transform.position = glm::vec3(0.0f, 10.0f, 0.0f);
-			transform.transform.rotation = glm::angleAxis(glm::radians(-45.0f), glm::vec3(1.0f, 0.0f, 0.0f));
+			tc.transform.position = glm::vec3(0.0f, 1.0f, 0.0f);
+			tc.transform.rotation = glm::angleAxis(glm::radians(-45.0f), glm::vec3(1, 0, 0));
 		}
 		else {
-			// µ„π‚‘¥∫Õæ€π‚µ∆∑≈‘⁄œ‡ª˙«∞∑Ω
-			transform.transform.position = cameraPos + cameraForward * 5.0f;
+			tc.transform.position = camPos + camForward * 5.0f;
 		}
-		activeScene->GetECS().AddComponent<TransformComponent>(entity, transform);
-
-		// ÃÌº”µ∆π‚◊Èº˛
+		activeScene->GetECS().AddComponent<TransformComponent>(entity, tc);
 		activeScene->GetECS().AddComponent<LightComponent>(entity, light);
 
-		// ◊‘∂Ø—°÷––¬¥¥Ω®µƒµ∆π‚
 		m_SelectedEntity = entity;
 		m_SelectedEntityName = lightName;
-		SyncTransformEditor(); // Õ¨≤Ω±‰ªª ˝æ›µΩ±‡º≠∆˜
+		SyncTransformEditor();
 		RefreshEntityList();
 
-		ITR_INFO("Created {} at position: ({}, {}, {})",
-			lightName,
-			transform.transform.position.x,
-			transform.transform.position.y,
-			transform.transform.position.z);
+		ITR_INFO("Created {} at ({:.2f},{:.2f},{:.2f})", lightName, tc.transform.position.x, tc.transform.position.y, tc.transform.position.z);
 	}
 
-	/**
-	 * Ω´±‡º≠∆˜÷–µƒ±‰ªª”¶”√µΩ—°÷– µÃÂ
-	 */
-	void ImGuiLayer::UpdateSelectedEntityTransform() {
-		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
-		if (!activeScene || m_SelectedEntity == entt::null)
-			return;
+	// ImGuiLayer.cpp - Ê∑ªÂä†Ê∏≤ÊüìËÆæÁΩÆÁ™óÂè£
+	void ImGuiLayer::ShowRendererSettingsWindow() {
+		ImGui::Begin("Renderer Settings");
 
-		auto& registry = activeScene->GetECS().GetRegistry();
-		if (registry.any_of<TransformComponent>(m_SelectedEntity)) {
-			auto& transform = registry.get<TransformComponent>(m_SelectedEntity);
-			transform.transform.position = m_TransformEditor.position;
-			transform.transform.rotation = m_TransformEditor.rotation;
-			transform.transform.scale = m_TransformEditor.scale;
+		Config& config = Config::Get();
+		auto& graphicsConfig = config.GetGraphicsConfig();
+		bool configChanged = false;
 
-			// »Áπ˚ «∑ΩœÚπ‚£¨º«¬º∑ΩœÚ–≈œ¢
-			if (registry.any_of<LightComponent>(m_SelectedEntity)) {
-				auto& light = registry.get<LightComponent>(m_SelectedEntity);
-				if (light.Type == LightType::Directional) {
-					// º∆À„µ±«∞µƒ ¿ΩÁ∑ΩœÚ£®”√”⁄µ˜ ‘£©
-					glm::vec3 worldDirection = transform.transform.rotation * light.Direction;
-					ITR_INFO("Directional Light Direction Updated - Local: ({},{},{}), World: ({},{},{})",
-						light.Direction.x, light.Direction.y, light.Direction.z,
-						worldDirection.x, worldDirection.y, worldDirection.z);
+		// MSAA ËÆæÁΩÆ
+		if (ImGui::Checkbox("Enable MSAA", &graphicsConfig.EnableMSAA)) {
+			configChanged = true;
+		}
+
+		if (graphicsConfig.EnableMSAA) {
+			const char* msaaItems[] = { "MSAA 2x", "MSAA 4x", "MSAA 8x" };
+			int currentMSAA = 0;
+			if (graphicsConfig.MSaaSamples == 2) currentMSAA = 0;
+			else if (graphicsConfig.MSaaSamples == 4) currentMSAA = 1;
+			else if (graphicsConfig.MSaaSamples == 8) currentMSAA = 2;
+
+			if (ImGui::Combo("MSAA Samples", &currentMSAA, msaaItems, IM_ARRAYSIZE(msaaItems))) {
+				graphicsConfig.MSaaSamples = (currentMSAA == 0) ? 2 : (currentMSAA == 1) ? 4 : 8;
+				configChanged = true;
+			}
+		}
+
+		// HDR ËÆæÁΩÆ
+		if (ImGui::Checkbox("Enable HDR", &graphicsConfig.EnableHDR)) {
+			configChanged = true;
+		}
+
+		// Gamma Ê†°Ê≠£
+		if (ImGui::Checkbox("Enable Gamma Correction", &graphicsConfig.EnableGammaCorrection)) {
+			configChanged = true;
+		}
+
+		// ÂêéÊúüÂ§ÑÁêÜËÆæÁΩÆ
+		if (ImGui::CollapsingHeader("Post Processing")) {
+			if (ImGui::Checkbox("Enable Post Processing", &graphicsConfig.EnablePostProcessing)) {
+				configChanged = true;
+			}
+
+			if (graphicsConfig.EnablePostProcessing) {
+				if (ImGui::SliderFloat("Bloom Threshold", &graphicsConfig.BloomThreshold, 0.5f, 2.0f)) {
+					configChanged = true;
+				}
+				if (ImGui::SliderFloat("Bloom Intensity", &graphicsConfig.BloomIntensity, 0.0f, 2.0f)) {
+					configChanged = true;
+				}
+				if (ImGui::SliderFloat("Vignette Intensity", &graphicsConfig.VignetteIntensity, 0.0f, 1.0f)) {
+					configChanged = true;
+				}
+				if (ImGui::SliderFloat("Chromatic Aberration", &graphicsConfig.ChromaticAberration, 0.0f, 0.1f)) {
+					configChanged = true;
 				}
 			}
 		}
-	}
 
-	/**
-	 * Õ¨≤Ω—°÷– µÃÂµƒ±‰ªªµΩ±‡º≠∆˜£®»∑±£±‡º≠µƒ «◊Ó–¬ ˝æ›£©
-	 */
-	void ImGuiLayer::SyncTransformEditor()
-	{
-		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
-		if (!activeScene || m_SelectedEntity == entt::null)
-			return;
+		// ÁªüËÆ°‰ø°ÊÅØ
+		if (ImGui::CollapsingHeader("Statistics")) {
+			auto stats = Renderer::GetStats();
+			ImGui::Text("Draw Calls: %d", stats.drawCalls);
+			ImGui::Text("Triangles: %d", stats.triangleCount);
+			ImGui::Text("Vertices: %d", stats.vertexCount);
 
-		auto& registry = activeScene->GetECS().GetRegistry();
-		if (registry.any_of<TransformComponent>(m_SelectedEntity))
-		{
-			auto& transform = registry.get<TransformComponent>(m_SelectedEntity);
-			// Õ¨≤ΩŒª÷√°¢–˝◊™°¢Àı∑≈
-			m_TransformEditor.position = transform.transform.position;
-			m_TransformEditor.rotation = transform.transform.rotation;
-			m_TransformEditor.scale = transform.transform.scale;
-			// Àƒ‘™ ˝◊™≈∑¿≠Ω«£®œ‘ æ”√£©
-			m_EulerAngles = glm::degrees(glm::eulerAngles(transform.transform.rotation));
-		}
-	}
-
-	// RenderGizmo (ÃÊªªƒ„‘≠¿¥µƒ µœ÷)
-	void ImGuiLayer::RenderGizmo()
-	{
-		// ª˘±æ–£—È£®±£¡Ù£©
-		if (m_SelectedEntity == entt::null) { std::cout << "Gizmo Debug: No entity selected\n"; return; }
-		if (!m_RendererLayer) { std::cout << "Gizmo Debug: No renderer layer\n"; return; }
-		if (!m_SceneManager) { std::cout << "Gizmo Debug: No scene manager\n"; return; }
-
-		auto* activeScene = m_SceneManager->GetActiveScene();
-		if (!activeScene) { std::cout << "Gizmo Debug: No active scene\n"; return; }
-
-		auto& registry = activeScene->GetECS().GetRegistry();
-		if (!registry.valid(m_SelectedEntity)) { std::cout << "Gizmo Debug: Invalid entity\n"; m_SelectedEntity = entt::null; return; }
-		if (!registry.all_of<TransformComponent>(m_SelectedEntity)) { std::cout << "Gizmo Debug: Entity has no TransformComponent\n"; return; }
-
-		// ªÒ»°œ‡ª˙æÿ’Û£®»∑±£’‚ «‰÷»æµΩŒ∆¿Ì ± π”√µƒœ‡ª˙£©
-		auto camera = m_RendererLayer->GetCamera();
-		glm::mat4 view = camera.GetViewMat();
-		glm::mat4 proj = camera.GetProjectionMat();
-
-		// ∑¿÷πŒﬁ–ßæÿ’Û
-		if (glm::determinant(view) == 0.0f || glm::determinant(proj) == 0.0f) { std::cout << "Gizmo Debug: Invalid camera matrices\n"; return; }
-
-		// **∑«≥£÷ÿ“™£∫ π”√µ±«∞¥∞ø⁄µƒ drawlist£¨’‚—˘ ImGuizmo ª·ªÊ÷∆‘⁄’‚∏ˆ viewport ¥∞ø⁄…œ**
-		ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
-		ImGuizmo::SetRect(m_ViewportOffset.x, m_ViewportOffset.y, m_ViewportSize.x, m_ViewportSize.y);
-
-		// ªÒ»° µÃÂ±‰ªª≤¢ππΩ® model æÿ’Û
-		auto& tc = registry.get<TransformComponent>(m_SelectedEntity);
-		glm::mat4 model = glm::translate(glm::mat4(1.0f), tc.transform.position) *
-			glm::toMat4(tc.transform.rotation) *
-			glm::scale(glm::mat4(1.0f), tc.transform.scale);
-
-		// snap ≈–∂®£∫ π”√ io.KeyCtrl£®±» ImGui::IsKeyDown ∏¸ø…øø£©
-		ImGuiIO& io = ImGui::GetIO();
-		bool useSnap = io.KeyCtrl;
-		float snapValues[3] = { 0.5f, 0.5f, 0.5f };
-		if (m_GizmoOperation == ImGuizmo::ROTATE) { snapValues[0] = snapValues[1] = snapValues[2] = 15.0f; }
-		else if (m_GizmoOperation == ImGuizmo::SCALE) { snapValues[0] = snapValues[1] = snapValues[2] = 0.1f; }
-
-		// µ˜”√ ImGuizmo
-		ImGuizmo::Manipulate(
-			glm::value_ptr(view),
-			glm::value_ptr(proj),
-			m_GizmoOperation,
-			m_GizmoMode,
-			glm::value_ptr(model),
-			nullptr,
-			useSnap ? snapValues : nullptr
-		);
-
-		m_IsUsingGizmo = ImGuizmo::IsUsing();
-		m_IsOverGizmo = ImGuizmo::IsOver();
-		std::cout << "Gizmo Debug: IsUsing=" << m_IsUsingGizmo << ", IsOver=" << m_IsOverGizmo << std::endl;
-
-		Application::Get().SetViewportState(m_ViewportHovered, m_ViewportFocused, m_IsUsingGizmo);
-
-		// ÷ª”–‘⁄’˝‘⁄≤Ÿ◊˜ ±≤≈∑÷Ω‚≤¢–¥ªÿ◊Èº˛
-		if (m_IsUsingGizmo)
-		{
-			float translation[3], rotationEulerDeg[3], scaleArr[3];
-			ImGuizmo::DecomposeMatrixToComponents(glm::value_ptr(model), translation, rotationEulerDeg, scaleArr);
-
-			glm::vec3 newTranslation(translation[0], translation[1], translation[2]);
-			glm::vec3 newRotationDeg(rotationEulerDeg[0], rotationEulerDeg[1], rotationEulerDeg[2]);
-			glm::vec3 newScale(scaleArr[0], scaleArr[1], scaleArr[2]);
-
-			glm::vec3 newRotationRad = glm::radians(newRotationDeg);
-			glm::quat newQuat = glm::quat(newRotationRad);
-
-			// ∏¸–¬ µÃÂ±‰ªª
-			tc.transform.position = newTranslation;
-			tc.transform.rotation = newQuat;
-			tc.transform.scale = newScale;
-
-			// Õ¨≤Ω±‡º≠∆˜√Ê∞Â
-			m_TransformEditor.position = newTranslation;
-			m_TransformEditor.rotation = newQuat;
-			m_TransformEditor.scale = newScale;
-			m_EulerAngles = newRotationDeg;
-
-			std::cout << "Gizmo Debug: Applied transform\n";
-		}
-	}
-
-	bool ImGuiLayer::ShouldBlockEvent()
-	{
-		ImGuiIO& io = ImGui::GetIO();
-
-		// »Áπ˚ ImGui œÎ“™≤∂ªÒ Û±Í£¨≤¢«“ Û±Í≤ª‘⁄ ”ø⁄ƒ⁄£¨‘Ú◊Ë÷π ¬º˛
-		if (io.WantCaptureMouse && !m_ViewportHovered) {
-			return true;
-		}
-
-		// »Áπ˚’˝‘⁄ π”√ Gizmo£¨◊Ë÷π ¬º˛
-		if (m_IsUsingGizmo) {
-			return true;
-		}
-
-		return false;
-	}
-
-
-	//  ¬º˛¥¶¿Ì∫Ø ˝£®±£≥÷‘≠”– ¬º˛œµÕ≥¬ﬂº≠£¨≤ª–ﬁ∏ƒ∑µªÿ÷µ£©
-	bool ImGuiLayer::OnMouseButtonPressedEvent(MouseButtonPressedEvent& e)
-	{
-		ImGuiIO& io = ImGui::GetIO();
-		io.MouseDown[e.GetMouseButton()] = true;
-
-		return ShouldBlockEvent();
-	}
-
-	bool ImGuiLayer::OnMouseButtonReleasedEvent(MouseButtonReleasedEvent& e)
-	{
-		ImGuiIO& io = ImGui::GetIO();
-		io.MouseDown[e.GetMouseButton()] = false;
-
-		return ShouldBlockEvent();
-	}
-
-	bool ImGuiLayer::OnMouseMovedEvent(MouseMovedEvent& e)
-	{
-		ImGuiIO& io = ImGui::GetIO();
-		io.MousePos = ImVec2(e.GetX(), e.GetY());
-
-		return ShouldBlockEvent();
-	}
-
-
-
-	bool ImGuiLayer::OnMouseScrolledEvent(MouseScrolledEvent& e)
-	{
-		ImGuiIO& io = ImGui::GetIO();
-		io.MouseWheelH += e.GetXOffset();
-		io.MouseWheel += e.GetYOffset();  // ∏¸–¬ImGuiπˆ¬÷◊¥Ã¨
-
-
-		return ShouldBlockEvent();
-	}
-
-	bool ImGuiLayer::OnKeyPressedEvent(KeyPressedEvent& e)
-	{
-		ImGuiIO& io = ImGui::GetIO();
-		io.KeysDown[e.GetKeyCode()] = true;
-
-		// ∏¸–¬–ﬁ Œº¸◊¥Ã¨
-		io.KeyCtrl = io.KeysDown[GLFW_KEY_LEFT_CONTROL] || io.KeysDown[GLFW_KEY_RIGHT_CONTROL];
-		io.KeyShift = io.KeysDown[GLFW_KEY_LEFT_SHIFT] || io.KeysDown[GLFW_KEY_RIGHT_SHIFT];
-		io.KeyAlt = io.KeysDown[GLFW_KEY_LEFT_ALT] || io.KeysDown[GLFW_KEY_RIGHT_ALT];
-		io.KeySuper = io.KeysDown[GLFW_KEY_LEFT_SUPER] || io.KeysDown[GLFW_KEY_RIGHT_SUPER];
-
-		// GizmoøÏΩ›º¸£®Ωˆ‘⁄ ”ø⁄æ€Ωπ ±£©
-		if (m_ViewportFocused && !io.WantCaptureKeyboard)
-		{
-			switch (e.GetKeyCode())
-			{
-			case GLFW_KEY_W:
-				m_GizmoOperation = ImGuizmo::TRANSLATE;
-				std::cout << "Gizmo: Switch to TRANSLATE" << std::endl;
-				break;
-			case GLFW_KEY_E:
-				m_GizmoOperation = ImGuizmo::ROTATE;
-				std::cout << "Gizmo: Switch to ROTATE" << std::endl;
-				break;
-			case GLFW_KEY_R:
-				m_GizmoOperation = ImGuizmo::SCALE;
-				std::cout << "Gizmo: Switch to SCALE" << std::endl;
-				break;
-			case GLFW_KEY_T:
-				// «–ªª±æµÿ/ ¿ΩÁø’º‰
-				m_GizmoMode = (m_GizmoMode == ImGuizmo::LOCAL) ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
-				std::cout << "Gizmo: Switch mode to " << (m_GizmoMode == ImGuizmo::LOCAL ? "LOCAL" : "WORLD") << std::endl;
-				break;
+			if (ImGui::Button("Reset Stats")) {
+				Renderer::ResetStats();
 			}
 		}
 
-		// º¸≈Ã∞¥œ¬ ¬º˛£∫ImGui≤∂ªÒ ±◊Ë÷π¥´µ›
-		return ShouldBlockEvent();
+		if (configChanged) {
+			config.MarkDirty(true);
+			ConfigObserver::Get().OnGraphicsConfigChanged(graphicsConfig);
+		}
+
+		ImGui::End();
 	}
 
-	bool ImGuiLayer::OnKeyReleasedEvent(KeyReleasedEvent& e)
+	// ÂÆûÁé∞ËµÑÊ∫êÊµèËßàÂô®Á™óÂè£
+// --- Replace existing ShowResourceBrowserWindow and DrawFileTreeNode implementations with this block ---
+
+	static const char* SortModeNames[] = { "Name", "Date", "Type" };
+
+	void ImGuiLayer::ShowResourceBrowserWindow() {
+		ImGui::Begin("Resource Browser", &m_ShowResourceBrowser);
+
+		auto& resourceManager = ResourceManager::Get();
+		auto fileTree = resourceManager.GetFileTree();
+
+		// Toolbar: Refresh / Import / New Folder / Search / Sort
+		// Note: ImGui doesn't have BeginHorizontal by default; use SameLine() for horizontal layout.
+		if (ImGui::Button("Refresh")) {
+			resourceManager.RefreshFileTree();
+			fileTree = resourceManager.GetFileTree();
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Import")) {
+			m_ShowImportWindow = true;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("New Folder")) {
+			if (fileTree) {
+				std::string newName = "NewFolder";
+				std::string basePath = fileTree->info.path;
+				std::filesystem::path p(basePath);
+				std::filesystem::path newDir = p / newName;
+				int counter = 1;
+				while (std::filesystem::exists(newDir)) {
+					newDir = p / (newName + std::to_string(counter++));
+				}
+				std::error_code ec;
+				std::filesystem::create_directories(newDir, ec);
+				resourceManager.RefreshFileTree();
+			}
+		}
+
+		ImGui::SameLine();
+		ImGui::TextUnformatted("Search:");
+		ImGui::SameLine();
+		ImGui::SetNextItemWidth(200.0f);
+		ImGui::InputText("##ResourceSearch", &m_ResourceSearch);
+
+		ImGui::SameLine();
+		ImGui::Checkbox("Show hidden", &m_ShowHiddenFiles);
+		ImGui::SameLine();
+		ImGui::Text("Sort:");
+		ImGui::SameLine();
+		static const char* SortModeNames[] = { "Name", "Date", "Type" };
+		ImGui::Combo("##SortMode", &m_SortMode, SortModeNames, IM_ARRAYSIZE(SortModeNames));
+
+		ImGui::Separator();
+
+		if (!fileTree) {
+			ImGui::Text("No file tree available. Click Refresh to scan.");
+			ImGui::End();
+			return;
+		}
+
+		// Prepare a recursive search function (std::function so it can be recursive)
+		std::function<bool(std::shared_ptr<ResourceFileNode>)> matchesSearch =
+			[&](std::shared_ptr<ResourceFileNode> n) -> bool {
+			if (!n) return false;
+			if (m_ResourceSearch.empty()) return true;
+			std::string name = n->info.name;
+			std::string lowerName = name;
+			std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+			std::string lowerSearch = m_ResourceSearch;
+			std::transform(lowerSearch.begin(), lowerSearch.end(), lowerSearch.begin(), ::tolower);
+			if (lowerName.find(lowerSearch) != std::string::npos) return true;
+			for (auto& c : n->children) {
+				if (matchesSearch(c)) return true;
+			}
+			return false;
+			};
+
+		// Layout: left tree pane + right details pane
+		ImGui::Columns(2, "ResColumns", true);
+		ImGui::SetColumnWidth(0, m_ResourcePaneWidth);
+
+		// Left pane: tree
+		ImGui::BeginChild("ResourceTreePane", ImVec2(0, 0), true);
+		// Breadcrumb
+		ImGui::Text("Root: %s", fileTree->info.path.c_str());
+		ImGui::Separator();
+
+		// recursive draw
+		std::function<void(std::shared_ptr<ResourceFileNode>)> drawNode;
+		drawNode = [&](std::shared_ptr<ResourceFileNode> node) {
+			if (!node) return;
+
+			// filter by search (show node if name contains search or any child contains)
+			if (!matchesSearch(node)) return;
+
+			// Choose flags: leaf if no children
+			ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_SpanAvailWidth;
+			if (node->children.empty()) flags |= ImGuiTreeNodeFlags_Leaf;
+			if (m_SelectedResourceNode == node) flags |= ImGuiTreeNodeFlags_Selected;
+
+			// Icon for type
+			const char* icon = "üìÅ";
+			switch (node->info.type) {
+			case ResourceType::Texture: icon = "üñºÔ∏è"; break;
+			case ResourceType::Model: icon = "üéØ"; break;
+			case ResourceType::Shader: icon = "üîÆ"; break;
+			case ResourceType::Material: icon = "üé®"; break;
+			case ResourceType::Scene: icon = "üåç"; break;
+			default: icon = node->children.empty() ? "üìÑ" : "üìÅ"; break;
+			}
+
+			std::string label = std::string(icon) + " " + node->info.name;
+
+			bool nodeOpen = ImGui::TreeNodeEx((void*)node.get(), flags, "%s", label.c_str());
+
+			// click / selection
+			if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
+				m_SelectedResourceNode = node;
+				// Double-click open action
+				if (ImGui::IsMouseDoubleClicked(0)) {
+					switch (node->info.type) {
+					case ResourceType::Model:
+						CreateModelEntity(node);
+						break;
+					case ResourceType::Texture:
+						ApplyTextureToSelectedEntity(node);
+						break;
+					case ResourceType::Shader:
+						ITR_INFO("Open shader: {}", node->info.path);
+						break;
+					default:
+						ITR_INFO("Open file: {}", node->info.path);
+						break;
+					}
+				}
+			}
+
+			// right-click context menu
+			if (ImGui::BeginPopupContextItem()) {
+				if (ImGui::MenuItem("Open")) {
+					if (node->info.type == ResourceType::Model) CreateModelEntity(node);
+					else if (node->info.type == ResourceType::Texture) ApplyTextureToSelectedEntity(node);
+				}
+				if (ImGui::MenuItem("Rename")) {
+					m_RenameNode = node;
+					std::strncpy(m_RenameBuffer, node->info.name.c_str(), sizeof(m_RenameBuffer) - 1);
+					m_RenameBuffer[sizeof(m_RenameBuffer) - 1] = '\0';
+					ImGui::OpenPopup("RenamePopup");
+				}
+				if (ImGui::MenuItem("Delete")) {
+					std::error_code ec;
+					std::filesystem::remove_all(std::filesystem::path(node->info.path), ec);
+					if (ec) {
+						ITR_ERROR("Failed to delete '{}': {}", node->info.path, ec.message());
+					}
+					else {
+						ITR_INFO("Deleted '{}'", node->info.path);
+					}
+					resourceManager.RefreshFileTree();
+					ImGui::EndPopup();
+					if (nodeOpen) ImGui::TreePop();
+					return;
+				}
+				if (ImGui::MenuItem("Show In Explorer")) {
+#ifdef _WIN32
+					std::string cmd = std::string("explorer /select,\"") + node->info.path + "\"";
+					system(cmd.c_str());
+#endif
+				}
+				ImGui::EndPopup();
+			}
+
+			// Inline rename popup (modal)
+			if (m_RenameNode == node) {
+				if (ImGui::BeginPopupModal("RenamePopup", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+					ImGui::Text("Rename to:");
+					ImGui::InputText("##rename", m_RenameBuffer, sizeof(m_RenameBuffer));
+					if (ImGui::Button("OK", ImVec2(120, 0))) {
+						std::filesystem::path oldPath(node->info.path);
+						std::filesystem::path newPath = oldPath.parent_path() / std::string(m_RenameBuffer);
+						std::error_code ec;
+						std::filesystem::rename(oldPath, newPath, ec);
+						if (ec) {
+							ITR_ERROR("Rename failed: {}", ec.message());
+						}
+						else {
+							ITR_INFO("Renamed '{}' to '{}'", oldPath.string(), newPath.string());
+						}
+						m_RenameNode = nullptr;
+						resourceManager.RefreshFileTree();
+						ImGui::CloseCurrentPopup();
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+						m_RenameNode = nullptr;
+						ImGui::CloseCurrentPopup();
+					}
+					ImGui::EndPopup();
+				}
+			}
+
+			// recursion
+			if (nodeOpen) {
+				for (const auto& child : node->children) {
+					if (!m_ShowHiddenFiles && !child->info.name.empty() && child->info.name[0] == '.') continue;
+					drawNode(child);
+				}
+				ImGui::TreePop();
+			}
+			};
+
+		// Draw starting from root's children (skip drawing root as a single node)
+		for (const auto& child : fileTree->children) {
+			drawNode(child);
+		}
+
+		ImGui::EndChild();
+
+		// Right column: details / preview
+		ImGui::NextColumn();
+		ImGui::BeginChild("ResourceDetails", ImVec2(0, 0), true);
+		if (m_SelectedResourceNode) {
+			ImGui::Text("Name: %s", m_SelectedResourceNode->info.name.c_str());
+			ImGui::Text("Path: %s", m_SelectedResourceNode->info.path.c_str());
+			ImGui::Text("Type: %d", (int)m_SelectedResourceNode->info.type);
+
+			// file modified time (portable conversion)
+			std::error_code ec;
+			if (std::filesystem::exists(m_SelectedResourceNode->info.path, ec) && !ec) {
+				auto fsize = std::filesystem::file_size(m_SelectedResourceNode->info.path, ec);
+				auto ftime = std::filesystem::last_write_time(m_SelectedResourceNode->info.path, ec);
+				if (!ec) {
+					using namespace std::chrono;
+					auto sctp = time_point_cast<system_clock::duration>(
+						ftime - std::filesystem::file_time_type::clock::now()
+						+ system_clock::now()
+					);
+					std::time_t cftime = system_clock::to_time_t(sctp);
+					ImGui::Text("Size: %lld bytes", (long long)fsize);
+					ImGui::Text("Modified: %s", std::asctime(std::localtime(&cftime)));
+				}
+			}
+
+			ImGui::Separator();
+			if (ImGui::Button("Open with system")) {
+#ifdef _WIN32
+				ShellExecuteA(NULL, "open", m_SelectedResourceNode->info.path.c_str(), NULL, NULL, SW_SHOW);
+#endif
+			}
+			ImGui::SameLine();
+			if (ImGui::Button("Refresh")) {
+				resourceManager.RefreshFileTree();
+			}
+		}
+		else {
+			ImGui::Text("No resource selected");
+		}
+		ImGui::EndChild();
+
+		ImGui::Columns(1);
+		ImGui::End();
+	}
+
+
+	void ImGuiLayer::DrawFileTreeNode(std::shared_ptr<ResourceFileNode> node) {
+		// kept for compatibility with other code that might call this method directly
+		if (!node) return;
+
+		// default simple delegator using new UI
+		// (you can keep this or remove if not used elsewhere)
+		ImGui::Text("%s", node->info.name.c_str());
+	}
+
+
+	void ImGuiLayer::HandleResourceDragDrop(std::shared_ptr<ResourceFileNode> node) {
+		if (!node) return;
+
+		switch (node->info.type) {
+		case ResourceType::Model:
+			ImGui::SetDragDropPayload("RESOURCE_MODEL", &node, sizeof(std::shared_ptr<ResourceFileNode>));
+			ImGui::Text("Model: %s", node->info.name.c_str());
+			break;
+		case ResourceType::Texture:
+			ImGui::SetDragDropPayload("RESOURCE_TEXTURE", &node, sizeof(std::shared_ptr<ResourceFileNode>));
+			ImGui::Text("Texture: %s", node->info.name.c_str());
+			break;
+		default:
+			break;
+		}
+	}
+
+	void ImGuiLayer::CreateModelEntity(std::shared_ptr<ResourceFileNode> modelNode) {
+		if (!m_SceneManager || !modelNode) return;
+
+		auto* activeScene = m_SceneManager->GetActiveScene();
+		if (!activeScene) return;
+
+		// Âä†ËΩΩÊ®°Âûã
+		auto model = ResourceManager::Get().LoadModelFromNode(modelNode);
+		if (!model) {
+			ITR_ERROR("Failed to load model: {}", modelNode->info.path);
+			return;
+		}
+
+		// ÂàõÂª∫ÂÆû‰Ωì
+		auto entity = activeScene->CreateEntity();
+		auto& reg = activeScene->GetECS().GetRegistry();
+
+		// ËÆæÁΩÆÁªÑ‰ª∂
+		reg.emplace<TagComponent>(entity, modelNode->info.name);
+		reg.emplace<TransformComponent>(entity);
+		reg.emplace<ModelComponent>(entity, model);
+		reg.emplace<MaterialComponent>(entity, m_DefaultMaterial);
+
+		RefreshEntityList();
+		ITR_INFO("Created model entity: {}", modelNode->info.name);
+	}
+
+	void ImGuiLayer::ApplyTextureToSelectedEntity(std::shared_ptr<ResourceFileNode> textureNode) {
+		if (m_SelectedEntity == entt::null || !textureNode) return;
+
+		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
+		if (!activeScene) return;
+
+		auto& reg = activeScene->GetECS().GetRegistry();
+
+		// Âä†ËΩΩÁ∫πÁêÜ
+		auto texture = ResourceManager::Get().LoadTextureFromNode(textureNode);
+		if (!texture) {
+			ITR_ERROR("Failed to load texture: {}", textureNode->info.path);
+			return;
+		}
+
+		// Ê£ÄÊü•ÂÆû‰ΩìÊòØÂê¶ÊúâÊùêË¥®ÁªÑ‰ª∂
+		if (reg.any_of<MaterialComponent>(m_SelectedEntity)) {
+			auto& materialComp = reg.get<MaterialComponent>(m_SelectedEntity);
+			if (materialComp.material) {
+				// ËÆæÁΩÆÊº´ÂèçÂ∞ÑÁ∫πÁêÜ
+				materialComp.material->SetDiffuse(texture);
+				ITR_INFO("Applied texture to selected entity: {}", textureNode->info.name);
+			}
+		}
+	}
+
+
+	void ImGuiLayer::UpdateSelectedEntityTransform()
 	{
-		ImGuiIO& io = ImGui::GetIO();
-		io.KeysDown[e.GetKeyCode()] = false;  // ∏¸–¬ImGui∞¥º¸◊¥Ã¨
+		if (!m_SceneManager || m_SelectedEntity == entt::null) return;
+		auto* activeScene = m_SceneManager->GetActiveScene();
+		auto& reg = activeScene->GetECS().GetRegistry();
+		if (!reg.valid(m_SelectedEntity) || !reg.any_of<TransformComponent>(m_SelectedEntity)) return;
 
-		// º¸≈Ã Õ∑≈ ¬º˛£∫ImGui≤∂ªÒ ±◊Ë÷π¥´µ›
-		return ShouldBlockEvent();
+		auto& t = reg.get<TransformComponent>(m_SelectedEntity);
+		t.transform.position = m_TransformEditor.position;
+		t.transform.rotation = m_TransformEditor.rotation;
+		t.transform.scale = m_TransformEditor.scale;
+
+		if (reg.any_of<LightComponent>(m_SelectedEntity))
+		{
+			auto& light = reg.get<LightComponent>(m_SelectedEntity);
+			if (light.Type == LightType::Directional) {
+				glm::vec3 worldDir = t.transform.rotation * light.Direction;
+				ITR_INFO("Directional Light direction updated: ({:.2f},{:.2f},{:.2f})", worldDir.x, worldDir.y, worldDir.z);
+			}
+		}
 	}
 
-	bool ImGuiLayer::OnKeyTypedEvent(KeyTypedEvent& e)
+	void ImGuiLayer::SyncTransformEditor()
 	{
-		//ImGuiIO& io = ImGui::GetIO();
-		//io.AddInputCharacter(e.GetKeyCode());  // ¥´µ› ‰»Î◊÷∑˚∏¯ImGui
+		if (!m_SceneManager || m_SelectedEntity == entt::null) return;
+		auto* activeScene = m_SceneManager->GetActiveScene();
+		auto& reg = activeScene->GetECS().GetRegistry();
+		if (!reg.valid(m_SelectedEntity) || !reg.any_of<TransformComponent>(m_SelectedEntity)) return;
 
-		// ◊÷∑˚ ‰»Î ¬º˛£∫ImGui≤∂ªÒ ±◊Ë÷π¥´µ›
-		return ShouldBlockEvent();
+		auto& t = reg.get<TransformComponent>(m_SelectedEntity);
+		m_TransformEditor.position = t.transform.position;
+		m_TransformEditor.rotation = t.transform.rotation;
+		m_TransformEditor.scale = t.transform.scale;
+		m_EulerAngles = glm::degrees(glm::eulerAngles(t.transform.rotation));
 	}
 
-	bool ImGuiLayer::OnWindowResizedEvent(WindowResizeEvent& e)
-	{
-		ImGuiIO& io = ImGui::GetIO();
-		io.DisplaySize = ImVec2(e.GetWidth(), e.GetHeight());
-		io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);  // ∏¸–¬ImGui¥∞ø⁄≥ﬂ¥Á
-
-		// ¥∞ø⁄ resize  ¬º˛Õ®≥£–Ë“™¥´µ›∏¯∆‰À˚≤„£®»ÁRendererLayer∏¸–¬ ”ø⁄£©£¨±£≥÷∑µªÿfalse
-		return ShouldBlockEvent();
-	}
-
-	/**
-	 *  ¬º˛∑÷∑¢£®∞Û∂® ¬º˛¥¶¿Ì∫Ø ˝£¨≤ª–ﬁ∏ƒ‘≠”– ¬º˛œµÕ≥£©
-	 */
+	// -------------------------------------------------------------------------
+	// Event dispatchers
+	// -------------------------------------------------------------------------
 	void ImGuiLayer::OnEvent(Event& event)
 	{
 		EventDispatcher dispatcher(event);
-
-		// ∞Û∂® ¬º˛¥¶¿Ì∫Ø ˝£® π”√‘≠”–œµÕ≥µƒBIND_EVENT_FN∫Í£©
 		dispatcher.Dispatch<MouseButtonPressedEvent>(BIND_EVENT_FN(ImGuiLayer::OnMouseButtonPressedEvent));
 		dispatcher.Dispatch<MouseButtonReleasedEvent>(BIND_EVENT_FN(ImGuiLayer::OnMouseButtonReleasedEvent));
 		dispatcher.Dispatch<MouseMovedEvent>(BIND_EVENT_FN(ImGuiLayer::OnMouseMovedEvent));
@@ -1083,4 +1235,79 @@ void ImGuiLayer::ShowEntityInspectorWindow() {
 		dispatcher.Dispatch<WindowResizeEvent>(BIND_EVENT_FN(ImGuiLayer::OnWindowResizedEvent));
 	}
 
-}
+	bool ImGuiLayer::ShouldBlockEvent() const
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		if (io.WantCaptureMouse && !m_ViewportHovered) return true;
+		if (m_IsUsingGizmo) return true;
+		return false;
+	}
+
+	bool ImGuiLayer::OnMouseButtonPressedEvent(MouseButtonPressedEvent& e)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		io.MouseDown[e.GetMouseButton()] = true;
+		return ShouldBlockEvent();
+	}
+	bool ImGuiLayer::OnMouseButtonReleasedEvent(MouseButtonReleasedEvent& e)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		io.MouseDown[e.GetMouseButton()] = false;
+		return ShouldBlockEvent();
+	}
+	bool ImGuiLayer::OnMouseMovedEvent(MouseMovedEvent& e)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		io.MousePos = ImVec2(e.GetX(), e.GetY());
+		return ShouldBlockEvent();
+	}
+	bool ImGuiLayer::OnMouseScrolledEvent(MouseScrolledEvent& e)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		io.MouseWheelH += e.GetXOffset();
+		io.MouseWheel += e.GetYOffset();
+		return ShouldBlockEvent();
+	}
+	bool ImGuiLayer::OnKeyPressedEvent(KeyPressedEvent& e)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		io.KeysDown[e.GetKeyCode()] = true;
+		io.KeyCtrl = io.KeysDown[GLFW_KEY_LEFT_CONTROL] || io.KeysDown[GLFW_KEY_RIGHT_CONTROL];
+		io.KeyShift = io.KeysDown[GLFW_KEY_LEFT_SHIFT] || io.KeysDown[GLFW_KEY_RIGHT_SHIFT];
+		io.KeyAlt = io.KeysDown[GLFW_KEY_LEFT_ALT] || io.KeysDown[GLFW_KEY_RIGHT_ALT];
+		io.KeySuper = io.KeysDown[GLFW_KEY_LEFT_SUPER] || io.KeysDown[GLFW_KEY_RIGHT_SUPER];
+
+		// Gizmo hotkeysÔºà‰ªÖÂú®ËßÜÂè£ËÅöÁÑ¶Ôºâ
+		if (m_ViewportFocused && !io.WantCaptureKeyboard)
+		{
+			switch (e.GetKeyCode())
+			{
+			case GLFW_KEY_W: m_GizmoOperation = ImGuizmo::TRANSLATE; break;
+			case GLFW_KEY_E: m_GizmoOperation = ImGuizmo::ROTATE; break;
+			case GLFW_KEY_R: m_GizmoOperation = ImGuizmo::SCALE; break;
+			case GLFW_KEY_T: m_GizmoMode = (m_GizmoMode == ImGuizmo::LOCAL) ? ImGuizmo::WORLD : ImGuizmo::LOCAL; break;
+			}
+		}
+
+		return ShouldBlockEvent();
+	}
+	bool ImGuiLayer::OnKeyReleasedEvent(KeyReleasedEvent& e)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		io.KeysDown[e.GetKeyCode()] = false;
+		return ShouldBlockEvent();
+	}
+	bool ImGuiLayer::OnKeyTypedEvent(KeyTypedEvent& /*e*/)
+	{
+		return ShouldBlockEvent();
+	}
+	bool ImGuiLayer::OnWindowResizedEvent(WindowResizeEvent& e)
+	{
+		ImGuiIO& io = ImGui::GetIO();
+		io.DisplaySize = ImVec2(e.GetWidth(), e.GetHeight());
+		io.DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+		// ‰øùÊåÅËøîÂõûÂÄº‰ª•‰æøÂÖ∂‰ªñÂ±ÇÊé•Êî∂ resize
+		return ShouldBlockEvent();
+	}
+
+} // namespace Intro

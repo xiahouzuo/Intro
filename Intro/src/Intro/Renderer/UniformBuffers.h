@@ -115,14 +115,14 @@ namespace Intro{
                         dirLight.direction = glm::vec4(worldDirection, 0.0f);
 
                         // **关键调试：详细输出颜色信息**
-                        ITR_INFO("=== Light Color Debug ===");
-                        ITR_INFO("Original Color: ({},{},{})", light.Color.r, light.Color.g, light.Color.b);
-                        ITR_INFO("Intensity: {}", light.Intensity);
+                        //ITR_INFO("=== Light Color Debug ===");
+                        //ITR_INFO("Original Color: ({},{},{})", light.Color.r, light.Color.g, light.Color.b);
+                        //ITR_INFO("Intensity: {}", light.Intensity);
 
                         // 测试不同的颜色组合
                         glm::vec3 testColor = light.Color * light.Intensity;
-                        ITR_INFO("Final Color (Color * Intensity): ({},{},{})",
-                            testColor.r, testColor.g, testColor.b);
+                        //ITR_INFO("Final Color (Color * Intensity): ({},{},{})",
+                        //    testColor.r, testColor.g, testColor.b);
 
                         // 强制设置为纯白色进行测试
                         // dirLight.color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
@@ -130,8 +130,8 @@ namespace Intro{
                         // 或者使用原始设置
                         dirLight.color = glm::vec4(testColor, 1.0f);
 
-                        ITR_INFO("UBO Color: ({},{},{},{})",
-                            dirLight.color.r, dirLight.color.g, dirLight.color.b, dirLight.color.a);
+                        //ITR_INFO("UBO Color: ({},{},{},{})",
+                        //    dirLight.color.r, dirLight.color.g, dirLight.color.b, dirLight.color.a);
 
                         data.numDir++;
                     }
@@ -163,7 +163,7 @@ namespace Intro{
                 }
             }
 
-            ITR_INFO("UBO Update - Directional Lights: {}", data.numDir);
+            //ITR_INFO("UBO Update - Directional Lights: {}", data.numDir);
             UpdateSubData(GL_UNIFORM_BUFFER, 0, sizeof(data), &data);
         }
     };

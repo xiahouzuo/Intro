@@ -79,7 +79,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>itrpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;ITR_BUILD_DLL;GLFW_INCLUDE_NONE;ITR_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;ITR_BUILD_DLL;GLFW_INCLUDE_NONE;GLM_ENABLE_EXPERIMENTAL;ITR_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\nlohmann;vendor\entt;vendor\assimp\include;vendor\stbimage;vendor\imguizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -104,7 +104,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>itrpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;ITR_BUILD_DLL;GLFW_INCLUDE_NONE;ITR_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;ITR_BUILD_DLL;GLFW_INCLUDE_NONE;GLM_ENABLE_EXPERIMENTAL;ITR_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\nlohmann;vendor\entt;vendor\assimp\include;vendor\stbimage;vendor\imguizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -133,7 +133,7 @@
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>itrpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;ITR_BUILD_DLL;GLFW_INCLUDE_NONE;ITR_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;ITR_BUILD_DLL;GLFW_INCLUDE_NONE;GLM_ENABLE_EXPERIMENTAL;ITR_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\imgui;vendor\glm;vendor\nlohmann;vendor\entt;vendor\assimp\include;vendor\stbimage;vendor\imguizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -160,6 +160,9 @@
   <ItemGroup>
     <ClInclude Include="src\Intro.h" />
     <ClInclude Include="src\Intro\Application.h" />
+    <ClInclude Include="src\Intro\Config\Config.h" />
+    <ClInclude Include="src\Intro\Config\ConfigObserver.h" />
+    <ClInclude Include="src\Intro\Config\RendererConfigUtils.h" />
     <ClInclude Include="src\Intro\Core.h" />
     <ClInclude Include="src\Intro\ECS\Components.h" />
     <ClInclude Include="src\Intro\ECS\ECS.h" />
@@ -177,17 +180,24 @@
     <ClInclude Include="src\Intro\Layer.h" />
     <ClInclude Include="src\Intro\LayerStack.h" />
     <ClInclude Include="src\Intro\Log.h" />
+    <ClInclude Include="src\Intro\Math\Math.h" />
     <ClInclude Include="src\Intro\Math\Transform.h" />
     <ClInclude Include="src\Intro\MouseButtonCodes.h" />
+    <ClInclude Include="src\Intro\RecourceManager\ResourceFileTree.h" />
+    <ClInclude Include="src\Intro\RecourceManager\ResourceManager.h" />
+    <ClInclude Include="src\Intro\RecourceManager\ShaderLibrary.h" />
     <ClInclude Include="src\Intro\Renderer\Camears\Camera.h" />
     <ClInclude Include="src\Intro\Renderer\Camears\FreeCamera.h" />
     <ClInclude Include="src\Intro\Renderer\Camears\OrbitCamera.h" />
+    <ClInclude Include="src\Intro\Renderer\Framebuffer.h" />
     <ClInclude Include="src\Intro\Renderer\Material.h" />
     <ClInclude Include="src\Intro\Renderer\Mesh.h" />
     <ClInclude Include="src\Intro\Renderer\Model.h" />
     <ClInclude Include="src\Intro\Renderer\RenderCommand.h" />
     <ClInclude Include="src\Intro\Renderer\RenderConstant.h" />
+    <ClInclude Include="src\Intro\Renderer\Renderer.h" />
     <ClInclude Include="src\Intro\Renderer\RendererLayer.h" />
+    <ClInclude Include="src\Intro\Renderer\RenderPass.h" />
     <ClInclude Include="src\Intro\Renderer\Shader.h" />
     <ClInclude Include="src\Intro\Renderer\ShapeGenerator.h" />
     <ClInclude Include="src\Intro\Renderer\Texture.h" />
@@ -203,17 +213,24 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Intro\Application.cpp" />
+    <ClCompile Include="src\Intro\Config\Config.cpp" />
     <ClCompile Include="src\Intro\ECS\SceneManager.cpp" />
     <ClCompile Include="src\Intro\ImGui\ImGuiLayer.cpp" />
     <ClCompile Include="src\Intro\Layer.cpp" />
     <ClCompile Include="src\Intro\LayerStack.cpp" />
     <ClCompile Include="src\Intro\Log.cpp" />
+    <ClCompile Include="src\Intro\Math\Math.cpp" />
+    <ClCompile Include="src\Intro\RecourceManager\ResourceManager.cpp" />
+    <ClCompile Include="src\Intro\RecourceManager\ShaderLibrary.cpp" />
     <ClCompile Include="src\Intro\Renderer\Camears\FreeCamera.cpp" />
     <ClCompile Include="src\Intro\Renderer\Camears\OrbitCamera.cpp" />
+    <ClCompile Include="src\Intro\Renderer\Framebuffer.cpp" />
     <ClCompile Include="src\Intro\Renderer\Mesh.cpp" />
     <ClCompile Include="src\Intro\Renderer\Model.cpp" />
     <ClCompile Include="src\Intro\Renderer\RenderCommand.cpp" />
+    <ClCompile Include="src\Intro\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Intro\Renderer\RendererLayer.cpp" />
+    <ClCompile Include="src\Intro\Renderer\RenderPass.cpp" />
     <ClCompile Include="src\Intro\Renderer\Shader.cpp" />
     <ClCompile Include="src\Intro\Renderer\ShapeGenerator.cpp" />
     <ClCompile Include="src\Intro\Renderer\Texture.cpp" />

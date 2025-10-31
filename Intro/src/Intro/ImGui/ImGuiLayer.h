@@ -1,40 +1,81 @@
-// ImGuiLayer.h
 #pragma once
 #include "Intro/Layer.h"
 #include "imgui.h"
+#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include "ImGuizmo.h"
 #include "Intro/ECS/SceneManager.h"
+#include "Intro/RecourceManager/ResourceFileTree.h"
 #include "Intro/Events/ApplicationEvent.h"
 #include "Intro/Events/KeyEvent.h"
 #include "Intro/Events/MouseEvent.h"
 #include "Intro/Renderer/RendererLayer.h"
 #include "Intro/ECS/Components.h"
 #include "glm/gtc/quaternion.hpp"
+#include <vector>
+#include <string>
+#include <memory>
 
 namespace Intro {
 
 	/**
-	 * ImGuiLayer 负责编辑器UI的渲染与交互
-	 * 职责：初始化ImGui、绘制编辑器界面、处理UI输入、同步场景数据
+	 * ImGuiLayer 负责编辑器 UI（初始化 / 每帧绘制 / 事件转发 / 简单工具）
+	 * 设计目标：
+	 *  - 单一职责：ImGui 相关代码集中在这里
+	 *  - 清晰的帧流程：Init -> NewFrame -> Draw(...) -> Render -> Shutdown
+	 *  - 最小副作用：尽量避免直接修改外部状态，使用场景接口
 	 */
 	class ITR_API ImGuiLayer : public Layer
 	{
 	public:
-		// 构造函数：注入场景管理器和渲染层依赖
 		ImGuiLayer(SceneManager* sceneManager, RendererLayer* rendererLayer = nullptr);
 		~ImGuiLayer() override;
 
-		// 层生命周期函数
-		void OnAttach() override;   // 初始化ImGui上下文和后端
-		void OnDetach() override;   // 清理ImGui资源
-		void OnUpdate(float deltaTime) override;  // 每帧更新UI
-		void OnEvent(Event& event) override;      // 处理事件（不修改原有事件系统）
+		// Layer lifecycle
+		void OnAttach() override;
+		void OnDetach() override;
+		void OnUpdate(float deltaTime) override;
+		void OnEvent(Event& event) override;
 
-		// 设置渲染层（可选，用于后期绑定）
+		// 可在运行时注入渲染层（若构造时没有）
 		void SetRendererLayer(RendererLayer* layer) { m_RendererLayer = layer; }
+
 	private:
-		// 事件处理函数（保持原有事件系统逻辑，不修改返回值行为）
+		// Lifecycle helpers
+		void InitImGui();
+		void ShutdownImGui();
+		void BeginFrame();
+		void EndFrameAndRender();
+
+		// Draw helpers (单一功能函数)
+		void DrawMenuBar();
+		void DrawDockSpaceHost();
+		void DrawViewport();
+		void ShowEntityManagerWindow();
+		void ShowEntityInspectorWindow();
+		void ShowSceneControlsWindow();
+		void ShowImportModelWindow();
+		void RenderGizmo();
+		void HandleRenamePopup();
+
+		// Utilities
+		void RefreshEntityList();
+		bool ImportModel(const std::string& path);
+		void CreatePrimitive(ShapeType type);
+		void CreateLight(LightType type);
+		void ShowRendererSettingsWindow();
+		void UpdateSelectedEntityTransform();
+		void SyncTransformEditor();
+		bool ShouldBlockEvent() const;
+
+		void ShowResourceBrowserWindow();
+		void DrawFileTreeNode(std::shared_ptr<ResourceFileNode> node);
+		void HandleResourceDragDrop(std::shared_ptr<ResourceFileNode> node);
+		void CreateModelEntity(std::shared_ptr<ResourceFileNode> modelNode);
+		void ApplyTextureToSelectedEntity(std::shared_ptr<ResourceFileNode> textureNode);
+
+
+		// Event handlers (原样保留，封装 ImGui IO 状态)
 		bool OnMouseButtonPressedEvent(MouseButtonPressedEvent& e);
 		bool OnMouseButtonReleasedEvent(MouseButtonReleasedEvent& e);
 		bool OnMouseMovedEvent(MouseMovedEvent& e);
@@ -44,73 +85,61 @@ namespace Intro {
 		bool OnKeyTypedEvent(KeyTypedEvent& e);
 		bool OnWindowResizedEvent(WindowResizeEvent& e);
 
-
 	private:
-		bool ShouldBlockEvent();
+		// dependencies
+		RendererLayer* m_RendererLayer = nullptr;
+		SceneManager* m_SceneManager = nullptr;
 
-		// UI绘制函数
-		void DrawMenuBar();               // 绘制菜单栏（文件、创建等）
-		void DrawDockSpaceHost();         // 创建停靠容器（布局基础）
-		void DrawViewport();              // 绘制渲染视口（显示场景渲染结果）
-		void ShowEntityManagerWindow();   // 显示实体管理器窗口
-		void ShowEntityInspectorWindow(); // 显示实体检查器（编辑组件）
-		void ShowSceneControlsWindow();   // 显示场景控制窗口
-		void ShowImportModelWindow();     // 显示模型导入窗口
+		// runtime state
+		float m_Time = 0.0f;
 
-		// 工具函数
-		void RefreshEntityList();         // 刷新实体列表（从场景同步）
-		bool ImportModel(const std::string& modelPath); // 导入模型
-		void CreatePrimitive(ShapeType type); // 创建基础几何体
-		void UpdateSelectedEntityTransform(); // 应用变换到选中实体
-		void SyncTransformEditor();       // 同步选中实体的变换到编辑器
-		void CreateLight(LightType type);//创建灯光
+		// viewport
+		ImVec2 m_ViewportSize = ImVec2(1280, 720);
+		ImVec2 m_LastViewportSize = ImVec2(0, 0);
+		ImVec2 m_ViewportOffset = ImVec2(0, 0);
+		bool m_ViewportHovered = false;
+		bool m_ViewportFocused = false;
 
-		//imguizmo
-		void RenderGizmo();
+		// selection / entities
+		entt::entity m_SelectedEntity = entt::null;
+		std::string  m_SelectedEntityName;
+		std::vector<entt::entity> m_CachedEntities;
 
-	private:
-		float m_Time = 0.0f;              // 用于计算帧率等时间相关逻辑
+		// transform editor (temp copy while editing)
+		Transform m_TransformEditor;
+		glm::vec3 m_EulerAngles = glm::vec3(0.0f);
 
-		RendererLayer* m_RendererLayer = nullptr; // 渲染层指针（获取渲染结果）
-		SceneManager* m_SceneManager = nullptr;   // 场景管理器（操作场景数据）
-
-		entt::entity m_SelectedEntity = entt::null; // 当前选中的实体
-		std::string m_SelectedEntityName;          // 选中实体的名称（显示用）
-
-		std::string m_ModelImportPath;    // 模型导入路径
-		bool m_ShowImportWindow = false;  // 是否显示导入窗口
-
-		// 视口状态变量
-		ImVec2 m_ViewportSize = ImVec2(1280, 720); // 视口尺寸
-		ImVec2 m_LastViewportSize = ImVec2(0, 0);  // 上一帧视口尺寸（用于检测变化）
-		bool m_ViewportHovered = false;   // 视口是否被鼠标悬停
-		bool m_ViewportFocused = false;   // 视口是否获得焦点
-		ImVec2 m_ViewportOffset = ImVec2(0, 0);    // 视口在屏幕上的偏移（用于坐标转换）
-
-		std::vector<entt::entity> m_CachedEntities; // 缓存的实体列表（减少ECS查询次数）
-		Transform m_TransformEditor;      // 变换编辑器的临时数据（编辑时不直接修改实体）
-		glm::vec3 m_EulerAngles;          // 欧拉角（用于显示旋转，内部仍用四元数计算）
-
-		// ImGuizmo 状态
+		// ImGuizmo state
 		ImGuizmo::OPERATION m_GizmoOperation = ImGuizmo::TRANSLATE;
 		ImGuizmo::MODE m_GizmoMode = ImGuizmo::WORLD;
-		bool m_IsUsingGizmo = false;       // 当前 gizmo 是否被拖动
-		bool m_IsOverGizmo = false;        // 鼠标是否悬停在 gizmo 上
+		bool m_IsUsingGizmo = false;
+		bool m_IsOverGizmo = false;
 
-		//更名
+		// rename modal state
 		bool m_IsEditingTag = false;
 		entt::entity m_EditingEntity = entt::null;
 		char m_TagEditBuffer[256] = { 0 };
 		bool m_ShouldOpenRenamePopup = false;
 		bool m_RenamePopupNeedsFocus = false;
 
+		// model import
+		std::string m_ModelImportPath;
+		bool m_ShowImportWindow = false;
 
+		bool m_ShowResourceBrowser = true;
 
+		// optional default material/shader (可注入)
+		std::shared_ptr<Material> m_DefaultMaterial;
+		std::shared_ptr<Shader> m_DefaultShader;
 
-
-
-		std::shared_ptr<Material> defaultMaterial;
-		std::shared_ptr<Shader> defaultShader;
+		// Resource browser state
+		std::string m_ResourceSearch = "";
+		std::shared_ptr<ResourceFileNode> m_SelectedResourceNode = nullptr;
+		std::shared_ptr<ResourceFileNode> m_RenameNode = nullptr;
+		char m_RenameBuffer[256] = { 0 };
+		bool m_ShowHiddenFiles = false;
+		int m_SortMode = 0; // 0=name, 1=time, 2=type
+		float m_ResourcePaneWidth = 320.0f; // 左边树宽度
 	};
 
-}
+} // namespace Intro

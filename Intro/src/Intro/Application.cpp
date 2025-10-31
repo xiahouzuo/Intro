@@ -3,6 +3,9 @@
 #include "Log.h"
 #include "Intro/Input.h"
 #include "Intro/ECS/Components.h"
+#include "Intro/Config/Config.h"
+#include "Intro/Config/RendererConfigUtils.h"
+#include "Intro/RecourceManager/ResourceManager.h"
 #include "glm/glm.hpp"
 #include <GLFW/glfw3.h>
 
@@ -20,11 +23,52 @@ namespace Intro {
 		m_Window = std::unique_ptr<Window>(Window::Create());
 		m_Window->SetEventCallback(BIND_EVENT_FN(Application::OnEvent));
 
+		// 加载配置
+		Config& config = Config::Get();
+		if (!config.Load()) {
+			ITR_WARN("Failed to load config, using defaults");
+		}
+
+		// 先指定正确的 assets 根（使用绝对路径或构造出的绝对路径），再初始化 ResourceManager
+		std::string assetsPath = "E:/MyEngine/Intro/Intro/src/Intro/assets/";
+
+		// 如果有 SetAssetsRoot 函数，优先使用它（不改变现有逻辑，只设置根）
+		ResourceManager::Get().SetAssetsRoot(assetsPath);
+
+		// 然后初始化资源管理器（内部会根据 m_AssetsRoot 扫描）
+		ResourceManager::Get().Initialize();
+
+		// 设置文件树更新回调
+		ResourceManager::Get().SetFileTreeUpdatedCallback([]() {
+			ITR_INFO("Resource file tree updated");
+			});
+
 		s_SceneManager = new SceneManager;
+
+		// 使用配置初始化渲染器
+		auto& graphicsConfig = config.GetGraphicsConfig();
+		RendererConfig rendererConfig = RendererConfigUtils::ToRendererConfig(graphicsConfig);
+
+		// 覆盖视口大小为窗口实际大小（如果需要）
+		rendererConfig.viewportWidth = m_Window->GetWidth();
+		rendererConfig.viewportHeight = m_Window->GetHeight();
+
+		if (!RendererConfigUtils::ValidateRendererConfig(rendererConfig)) {
+			ITR_WARN("Invalid renderer config, using defaults");
+			// 可以在这里设置安全的默认值
+			rendererConfig.viewportWidth = m_Window->GetWidth();
+			rendererConfig.viewportHeight = m_Window->GetHeight();
+			rendererConfig.enableMSAA = true;
+			rendererConfig.msaaSamples = 4;
+		}
+
+		Renderer::SetConfig(rendererConfig);
+		Renderer::Init();
+
 		
 		defaultShader = std::make_shared<Shader>(
-			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/tempShader.vert",
-			"E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/tempShader.frag"
+			"E:/MyEngine/Intro/Intro/src/Intro/assert/shaders/tempShader.vert",
+			"E:/MyEngine/Intro/Intro/src/Intro/assert/shaders/tempShader.frag"
 		);
 		defaultMaterial = std::make_shared<Material>(defaultShader);
 		//临时模型
@@ -45,7 +89,7 @@ namespace Intro {
 		LightComponent light;
 		light.Type = LightType::Directional;
 		light.Color = glm::vec3(1.0f, 1.0f, 1.0f); // 白色
-		light.Intensity = 1.0f;
+		light.Intensity = 0.5f;
 		light.Direction = glm::vec3(0.0f, 0.0f, -1.0f); // 局部空间向前
 		defaultScene.GetECS().AddComponent<LightComponent>(lightEntity, light);
 
@@ -100,6 +144,8 @@ namespace Intro {
 			float currentTime = (float)glfwGetTime(); // 假设使用 GLFW，需要包含 GLFW/glfw3.h
 			float deltaTime = currentTime - lastFrameTime;
 			lastFrameTime = currentTime;
+
+			Input::Update();
 
 			if (s_SceneManager)
 			{

@@ -51,7 +51,7 @@ namespace Intro {
         m_Shader->SetUniformInt("material_diffuse", 0);
         m_Shader->SetUniformInt("material_specular", 1);
         m_Shader->SetUniformFloat("material_shininess", 32.0f);
-        m_Shader->SetUniformVec3("u_AmbientColor", glm::vec3(0.2f));
+        m_Shader->SetUniformVec3("u_AmbientColor", glm::vec3(1.0f, 0.0f, 0.0f));
     }
 
     void RendererLayer::OnUpdate(float deltaTime) {
@@ -87,13 +87,13 @@ namespace Intro {
         GLuint shaderProgram = m_Shader->GetShaderID();
         GLuint lightsBlockIndex = glGetUniformBlockIndex(shaderProgram, "LightsUBO");
         GLint lightsBlockBinding = -1;
-        if (lightsBlockIndex != GL_INVALID_INDEX) {
-            glGetActiveUniformBlockiv(shaderProgram, lightsBlockIndex, GL_UNIFORM_BLOCK_BINDING, &lightsBlockBinding);
-            ITR_INFO("Shader UBO Block - Index: {}, Binding: {}", lightsBlockIndex, lightsBlockBinding);
-        }
-        else {
-            ITR_ERROR("LightsUBO block not found in shader!");
-        }
+        //if (lightsBlockIndex != GL_INVALID_INDEX) {
+        //    glGetActiveUniformBlockiv(shaderProgram, lightsBlockIndex, GL_UNIFORM_BLOCK_BINDING, &lightsBlockBinding);
+        //    ITR_INFO("Shader UBO Block - Index: {}, Binding: {}", lightsBlockIndex, lightsBlockBinding);
+        //}
+        //else {
+        //    ITR_ERROR("LightsUBO block not found in shader!");
+        //}
 
         static bool firstRun = true;
         if (firstRun) {

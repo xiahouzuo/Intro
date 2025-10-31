@@ -160,6 +160,16 @@
     <ClInclude Include="src\Intro\Renderer\RenderConstant.h" />
     <ClInclude Include="src\Intro\Renderer\UniformBuffers.h" />
     <ClInclude Include="src\Intro\Renderer\Material.h" />
+    <ClInclude Include="src\Intro\Math\Math.h" />
+    <ClInclude Include="src\Intro\Config\Config.h" />
+    <ClInclude Include="src\Intro\Renderer\Renderer.h" />
+    <ClInclude Include="src\Intro\Renderer\Framebuffer.h" />
+    <ClInclude Include="src\Intro\RecourceManager\ShaderLibrary.h" />
+    <ClInclude Include="src\Intro\Renderer\RenderPass.h" />
+    <ClInclude Include="src\Intro\Config\RendererConfigUtils.h" />
+    <ClInclude Include="src\Intro\Config\ConfigObserver.h" />
+    <ClInclude Include="src\Intro\RecourceManager\ResourceManager.h" />
+    <ClInclude Include="src\Intro\RecourceManager\ResourceFileTree.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Intro\Application.cpp">
@@ -223,5 +233,12 @@
       <Filter>vendor\imguizmo</Filter>
     </ClCompile>
     <ClCompile Include="src\Intro\Renderer\RenderQueue.h" />
+    <ClCompile Include="src\Intro\Math\Math.cpp" />
+    <ClCompile Include="src\Intro\Config\Config.cpp" />
+    <ClCompile Include="src\Intro\Renderer\Renderer.cpp" />
+    <ClCompile Include="src\Intro\Renderer\Framebuffer.cpp" />
+    <ClCompile Include="src\Intro\RecourceManager\ShaderLibrary.cpp" />
+    <ClCompile Include="src\Intro\Renderer\RenderPass.cpp" />
+    <ClCompile Include="src\Intro\RecourceManager\ResourceManager.cpp" />
   </ItemGroup>
 </Project>

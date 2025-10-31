@@ -23,9 +23,9 @@ namespace Intro {
 		if (location != -1) {
 			glUniformMatrix4fv(location, 1, GL_FALSE, glm::value_ptr(value));
 		}
-		else {
-			ITR_WARN("Uniform '{}' not found in shader {}", name, m_ShaderID);
-		}
+		//else {
+		//	ITR_WARN("Uniform '{}' not found in shader {}", name, m_ShaderID);
+		//}
 	}
 
 	void Shader::SetUniformInt(const std::string& name, int value) const
@@ -34,9 +34,9 @@ namespace Intro {
 		if (location != -1) {
 			glUniform1i(location, value);
 		}
-		else {
-			ITR_WARN("Uniform '{}' not found in shader {}", name, m_ShaderID);
-		}
+		//else {
+		//	ITR_WARN("Uniform '{}' not found in shader {}", name, m_ShaderID);
+		//}
 	}
 
 	void Shader::SetUniformFloat(const std::string& name, float value) const
@@ -45,9 +45,9 @@ namespace Intro {
 		if (location != -1) {
 			glUniform1f(location, value);
 		}
-		else {
-			ITR_WARN("Uniform '{}' not found in shader {}", name, m_ShaderID);
-		}
+		//else {
+		//	ITR_WARN("Uniform '{}' not found in shader {}", name, m_ShaderID);
+		//}
 	}
 
 	void Shader::SetUniformVec3(const std::string& name, const glm::vec3& value) const
@@ -56,9 +56,9 @@ namespace Intro {
 		if (location != -1) {
 			glUniform3f(location, value.x, value.y, value.z);
 		}
-		else {
-			ITR_WARN("Uniform '{}' not found in shader {}", name, m_ShaderID);
-		}
+		//else {
+		//	ITR_WARN("Uniform '{}' not found in shader {}", name, m_ShaderID);
+		//}
 	}
 
 	void Shader::CompileShader(const char* vertexShaderPath, const char* fragmentShaderPath)
