@@ -47,6 +47,10 @@ uniform sampler2D material_specular;
 uniform float material_shininess;
 uniform vec3 u_AmbientColor;
 
+vec3 gammaCorrect(vec3 color) {
+    return pow(color, vec3(1.0/2.2));
+}
+
 // 点光源衰减函数
 float CalculateAttenuation(float distance, float range) {
     float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * distance * distance);
@@ -61,67 +65,71 @@ float CalculateSpotIntensity(vec3 lightDir, vec3 spotDir, float outerCos, float 
 }
 
 void main() {
-
-    
-    // 正常的渲染逻辑
-    vec3 diffuseMap = texture(material_diffuse, vUV).rgb;
-    vec3 normal = normalize(vNormal);
-    vec3 viewDir = normalize(camera.viewPos.xyz - vFragPos);
-    vec3 result = vec3(0.0);
-
-    // 环境光
-    result += u_AmbientColor * diffuseMap;
-
-    // 方向光
-    for (int i = 0; i < lights.numDir && i < 4; i++) {
-        vec3 lightDir = normalize(-lights.dirLights[i].direction.xyz);
-        float diff = max(dot(normal, lightDir), 0.0);
-        
-        vec3 lightColor = lights.dirLights[i].color.rgb;
-        vec3 diffuse = diff * diffuseMap * lightColor;
-        result += diffuse;
-    }
-
-    // 点光源
-    for (int i = 0; i < lights.numPoint && i < 8; i++) {
-        vec3 lightPos = lights.pointLights[i].position.xyz;
-        float lightRange = lights.pointLights[i].position.w;
-        
-        vec3 lightDir = normalize(lightPos - vFragPos);
-        float diff = max(dot(normal, lightDir), 0.0);
-        
-        // 计算衰减
-        float distance = length(lightPos - vFragPos);
-        float attenuation = CalculateAttenuation(distance, lightRange);
-        
-        vec3 lightColor = lights.pointLights[i].color.rgb;
-        vec3 diffuse = diff * diffuseMap * lightColor * attenuation;
-        result += diffuse;
-    }
-
-    // 聚光灯
-    for (int i = 0; i < lights.numSpot && i < 4; i++) {
-        vec3 lightPos = lights.spotLights[i].position.xyz;
-        float lightRange = lights.spotLights[i].position.w;
-        vec3 spotDir = normalize(-lights.spotLights[i].direction.xyz);
-        float outerCos = lights.spotLights[i].direction.w;
-        float innerCos = lights.spotLights[i].params.x;
-        
-        vec3 lightDir = normalize(lightPos - vFragPos);
-        float diff = max(dot(normal, lightDir), 0.0);
-        
-        // 计算衰减
-        float distance = length(lightPos - vFragPos);
-        float attenuation = CalculateAttenuation(distance, lightRange);
-        
-        // 计算聚光灯强度
-        float spotIntensity = CalculateSpotIntensity(lightDir, spotDir, outerCos, innerCos);
-        
-        vec3 lightColor = lights.spotLights[i].color.rgb;
-        vec3 diffuse = diff * diffuseMap * lightColor * attenuation * spotIntensity;
-        result += diffuse;
-    }
-
-    result = clamp(result, 0.0, 1.0);
-    FragColor = vec4(result, 1.0);
+//
+//    
+//    // 正常的渲染逻辑
+//    vec3 diffuseMap = texture(material_diffuse, vUV).rgb;
+//    vec3 normal = normalize(vNormal);
+//    vec3 viewDir = normalize(camera.viewPos.xyz - vFragPos);
+//    vec3 result = vec3(0.0);
+//
+//    // 环境光
+//    result += u_AmbientColor * diffuseMap;
+//
+//    // 方向光
+//    for (int i = 0; i < lights.numDir && i < 4; i++) {
+//        vec3 lightDir = normalize(-lights.dirLights[i].direction.xyz);
+//        float diff = max(dot(normal, lightDir), 0.0);
+//        
+//        vec3 lightColor = lights.dirLights[i].color.rgb;
+//        vec3 diffuse = diff * diffuseMap * lightColor;
+//        result += diffuse;
+//    }
+//
+//    // 点光源
+//    for (int i = 0; i < lights.numPoint && i < 8; i++) {
+//        vec3 lightPos = lights.pointLights[i].position.xyz;
+//        float lightRange = lights.pointLights[i].position.w;
+//        
+//        vec3 lightDir = normalize(lightPos - vFragPos);
+//        float diff = max(dot(normal, lightDir), 0.0);
+//        
+//        // 计算衰减
+//        float distance = length(lightPos - vFragPos);
+//        float attenuation = CalculateAttenuation(distance, lightRange);
+//        
+//        vec3 lightColor = lights.pointLights[i].color.rgb;
+//        vec3 diffuse = diff * diffuseMap * lightColor * attenuation;
+//        result += diffuse;
+//    }
+//
+//    // 聚光灯
+//    for (int i = 0; i < lights.numSpot && i < 4; i++) {
+//        vec3 lightPos = lights.spotLights[i].position.xyz;
+//        float lightRange = lights.spotLights[i].position.w;
+//        vec3 spotDir = normalize(-lights.spotLights[i].direction.xyz);
+//        float outerCos = lights.spotLights[i].direction.w;
+//        float innerCos = lights.spotLights[i].params.x;
+//        
+//        vec3 lightDir = normalize(lightPos - vFragPos);
+//        float diff = max(dot(normal, lightDir), 0.0);
+//        
+//        // 计算衰减
+//        float distance = length(lightPos - vFragPos);
+//        float attenuation = CalculateAttenuation(distance, lightRange);
+//        
+//        // 计算聚光灯强度
+//        float spotIntensity = CalculateSpotIntensity(lightDir, spotDir, outerCos, innerCos);
+//        
+//        vec3 lightColor = lights.spotLights[i].color.rgb;
+//        vec3 diffuse = diff * diffuseMap * lightColor * attenuation * spotIntensity;
+//        result += diffuse;
+//    }
+//
+//    result = clamp(result, 0.0, 1.0);
+//
+//    result = gammaCorrect(result);
+//
+//    FragColor = vec4(result, 1.0);
+FragColor = vec4(0.0, 1.0, 0.0, 1.0);
 }

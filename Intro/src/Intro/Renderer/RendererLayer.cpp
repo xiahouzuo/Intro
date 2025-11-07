@@ -1,8 +1,10 @@
 #include "itrpch.h"
+#include "Renderer.h"
 #include "RendererLayer.h"
 #include "imgui.h"
 #include "Intro/Application.h"
 #include "Intro/ECS/SceneManager.h"
+#include "Intro/RecourceManager/ShaderLibrary.h"
 #include "RenderCommand.h"
 #include "UBO.h"
 #include <glad/glad.h>
@@ -11,21 +13,29 @@
 namespace Intro {
 
     RendererLayer::RendererLayer(const Window& window)
-        : Layer("Renderer Layer"), m_Window(window), m_Camera(window)
+        : Layer("Renderer Layer"), m_Window(window), m_EditorCamera(window)
     {
-        m_Shader = std::make_unique<Shader>(
-            "E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/tempShader.vert",
-            "E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/tempShader.frag"
-        );
+        m_Shader = Application::GetShaderLibrary().Get("defaultShader");
 
         m_ViewportWidth = window.GetWidth();
         m_ViewportHeight = window.GetHeight();
+
+        m_GameCamera = std::make_unique<FreeCamera>(window);
     }
 
     RendererLayer::~RendererLayer()
     {
         m_Shader.reset();
         DestroyFramebuffer();
+
+        if (m_ColliderVAO) {
+            glDeleteVertexArrays(1, &m_ColliderVAO);
+            m_ColliderVAO = 0;
+        }
+        if (m_ColliderVBO) {
+            glDeleteBuffers(1, &m_ColliderVBO);
+            m_ColliderVBO = 0;
+        }
     }
 
     void RendererLayer::OnAttach()
@@ -34,7 +44,15 @@ namespace Intro {
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
 
-        CreateFramebuffer(m_ViewportWidth, m_ViewportHeight);
+        Renderer::SetConfig({
+            m_ViewportWidth,
+            m_ViewportHeight,
+            false,  // enableMSAA
+            4,      // msaaSamples
+            false,  // enableHDR
+            true    // enableGammaCorrection
+            });
+        Renderer::Init();
 
         m_CameraUBO = std::make_unique<CameraUBO>();
         m_LightsUBO = std::make_unique<LightsUBO>();
@@ -51,19 +69,41 @@ namespace Intro {
         m_Shader->SetUniformInt("material_diffuse", 0);
         m_Shader->SetUniformInt("material_specular", 1);
         m_Shader->SetUniformFloat("material_shininess", 32.0f);
-        m_Shader->SetUniformVec3("u_AmbientColor", glm::vec3(1.0f, 0.0f, 0.0f));
+        m_Shader->SetUniformVec3("u_AmbientColor", glm::vec3(0.03f, 0.03f, 0.03f));
+
+        glGenVertexArrays(1, &m_ColliderVAO);
+        glGenBuffers(1, &m_ColliderVBO);
+
+        glBindVertexArray(m_ColliderVAO);
+        glBindBuffer(GL_ARRAY_BUFFER, m_ColliderVBO);
+
+        // 初始分配一些空间
+        glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * 1000, nullptr, GL_DYNAMIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+        glEnableVertexAttribArray(0);
+
+        glBindVertexArray(0);
     }
 
     void RendererLayer::OnUpdate(float deltaTime) {
+        // 检查 OpenGL 错误
         GLenum error = glGetError();
         if (error != GL_NO_ERROR) {
             ITR_ERROR("OpenGL error before rendering: 0x%x", error);
         }
 
-        // 更新相机和时间
-        m_Camera.OnUpdate(deltaTime);
+        // 更新时间和相机
         m_Time += deltaTime;
 
+        if (m_UseEditorCamera) {
+            m_EditorCamera.OnUpdate(deltaTime);
+        }
+        else {
+            SyncGameCameraFromScene();
+        }
+
+        // 获取活动场景
         auto& sceneMgr = Application::GetSceneManager();
         auto* activeScene = sceneMgr.GetActiveScene();
         if (!activeScene) {
@@ -72,145 +112,231 @@ namespace Intro {
         }
         auto& ecs = activeScene->GetECS();
 
-        // 更新 UBO
-        m_CameraUBO->OnUpdate(m_Camera, m_Time);
-        m_LightsUBO->OnUpdate(ecs);
+        // 更新视锥体（用于调试显示）
+        glm::mat4 editorViewProjection = m_EditorCamera.GetProjectionMat() * m_EditorCamera.GetViewMat();
+        m_EditorFrustum.UpdateFromMatrix(editorViewProjection);
 
-        // 强制重新绑定 UBO 基址（安全）
-        m_CameraUBO->BindBase(GL_UNIFORM_BUFFER, CAMERA_UBO_BINDING);
-        m_LightsUBO->BindBase(GL_UNIFORM_BUFFER, LIGHTS_UBO_BINDING);
-
-        // 绑定默认 shader（仅用于 UBO / 全局 uniform）
-        m_Shader->Bind();
-
-        // 验证 shader 中的 UBO 块绑定 (debug)
-        GLuint shaderProgram = m_Shader->GetShaderID();
-        GLuint lightsBlockIndex = glGetUniformBlockIndex(shaderProgram, "LightsUBO");
-        GLint lightsBlockBinding = -1;
-        //if (lightsBlockIndex != GL_INVALID_INDEX) {
-        //    glGetActiveUniformBlockiv(shaderProgram, lightsBlockIndex, GL_UNIFORM_BLOCK_BINDING, &lightsBlockBinding);
-        //    ITR_INFO("Shader UBO Block - Index: {}, Binding: {}", lightsBlockIndex, lightsBlockBinding);
-        //}
-        //else {
-        //    ITR_ERROR("LightsUBO block not found in shader!");
-        //}
-
-        static bool firstRun = true;
-        if (firstRun) {
-            GLint boundCameraUBO = 0, boundLightsUBO = 0;
-            glGetIntegeri_v(GL_UNIFORM_BUFFER_BINDING, CAMERA_UBO_BINDING, &boundCameraUBO);
-            glGetIntegeri_v(GL_UNIFORM_BUFFER_BINDING, LIGHTS_UBO_BINDING, &boundLightsUBO);
-
-            ITR_INFO("UBO Binding Check - Camera: {} (expected: {}), Lights: {} (expected: {})",
-                boundCameraUBO, m_CameraUBO->GetID(),
-                boundLightsUBO, m_LightsUBO->GetID());
-            firstRun = false;
+        Camera* gameCam = GetMainCameraFromScene();
+        if (gameCam) {
+            glm::mat4 gameViewProjection = gameCam->GetProjectionMat() * gameCam->GetViewMat();
+            m_GameFrustum.UpdateFromMatrix(gameViewProjection);
         }
 
-        // 收集渲染项
-        m_RenderQueue.Clear();
-        RenderSystem::CollectRenderables(ecs, m_RenderQueue, m_Camera.GetPosition());
-        m_RenderQueue.Sort(m_Camera.GetPosition());
+        // 获取活动相机
+        Camera& activeCam = GetActiveCamera();
 
-        // 渲染到 FBO
-        if (m_FBO) {
-            BindRenderState();
+        // 调试信息
+        ITR_INFO("=== RendererLayer Update ===");
+        ITR_INFO("Using {} camera", m_UseEditorCamera ? "Editor" : "Game");
+        ITR_INFO("Camera Position: ({}, {}, {})",
+            activeCam.GetPosition().x, activeCam.GetPosition().y, activeCam.GetPosition().z);
 
-            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        // 更新碰撞体线框数据
+        if (m_ShowColliders) {
+            PhysicsSystem::DebugDrawColliders(ecs, m_ColliderLines);
 
-            glEnable(GL_DEPTH_TEST);
-            glDisable(GL_BLEND);
-
-            std::shared_ptr<Material> lastMaterial = nullptr;
-
-            // 不透明物体绘制
-            for (const auto& item : m_RenderQueue.opaque) {
-                auto& material = item.material ? item.material : m_DefaultMaterial;
-
-                if (material != lastMaterial) {
-                    // 绑定材质（材质实现应绑定 shader）
-                    material->Bind();
-
-                    // 强制确保 sampler uniforms 指向纹理单元（在 shader Bind 后设置）
-                    Shader* matShader = material->GetShader().get();
-                    if (matShader) {
-                        matShader->Bind();
-                        matShader->SetUniformInt("material_diffuse", 0);
-                        matShader->SetUniformInt("material_specular", 1);
-                        // 其它全局材质 uniform
-                        matShader->SetUniformFloat("material_shininess", material->GetShininess());
-                        matShader->SetUniformVec3("u_AmbientColor", material->GetAmbient());
-                    }
-
-                    // 强制绑定材质的纹理到对应纹理单元（安全措施）
-                    auto diffuseTexPtr = material->GetDiffuseTextureID();
-                    auto specTexPtr = material->GetSpecularTextureID();
-
-                    GLuint diffuseID = 0u, specID = 0u;
-                    if (diffuseTexPtr) {
-                        diffuseID = diffuseTexPtr->GetID();
-                    }
-                    if (specTexPtr) {
-                        specID = specTexPtr->GetID();
-                    }
-
-                    glActiveTexture(GL_TEXTURE0);
-                    glBindTexture(GL_TEXTURE_2D, diffuseID);
-                    glActiveTexture(GL_TEXTURE1);
-                    glBindTexture(GL_TEXTURE_2D, specID);
-                    glActiveTexture(GL_TEXTURE0);
-
-                    ITR_INFO("Material diffuseID = {}, specID = {}, shininess = {}", diffuseID, specID, material->GetShininess());
-
-                    lastMaterial = material;
-                }
-
-                // 设置模型矩阵
-                material->GetShader()->SetUniformMat4("u_Transform", item.transform);
-
-                // 绘制网格
-                if (item.mesh) {
-                    RenderCommand::Draw(*item.mesh, *material->GetShader());
-                }
+            if (!m_ColliderLines.empty()) {
+                glBindBuffer(GL_ARRAY_BUFFER, m_ColliderVBO);
+                glBufferData(GL_ARRAY_BUFFER,
+                    m_ColliderLines.size() * sizeof(glm::vec3),
+                    m_ColliderLines.data(), GL_DYNAMIC_DRAW);
+                glBindBuffer(GL_ARRAY_BUFFER, 0);
             }
+        }
 
-            // 透明物体绘制
+        // ==================== 更新 UBO ====================
+        m_CameraUBO->OnUpdate(activeCam, m_Time);
+        m_LightsUBO->OnUpdate(ecs);
+
+        // ==================== 收集渲染项 ====================
+        m_RenderQueue.Clear();
+        RenderSystem::CollectRenderables(ecs, m_RenderQueue, activeCam.GetPosition());
+        m_RenderQueue.Sort(activeCam.GetPosition());
+
+        ITR_INFO("Render Queue - Opaque: {}, Transparent: {}",
+            m_RenderQueue.opaque.size(), m_RenderQueue.transparent.size());
+
+        BindRenderState();
+
+        // ==================== 开始渲染帧 ====================
+        Renderer::BeginFrame();
+
+        // ==================== 渲染不透明物体 ====================
+        RenderOpaqueObjects();
+
+        // ==================== 渲染透明物体 ====================
+        RenderTransparentObjects();
+
+        // ==================== 渲染碰撞体线框 ====================
+        if (m_ShowColliders && !m_ColliderLines.empty()) {
+            RenderColliderWireframes();
+        }
+
+        // ==================== 渲染视锥体 ====================
+        if (m_ShowFrustum) {
+            // 保存状态
+            GLboolean prevDepthTest = glIsEnabled(GL_DEPTH_TEST);
+            GLboolean prevBlend = glIsEnabled(GL_BLEND);
+
+            // 设置视锥体渲染状态
+            glDisable(GL_DEPTH_TEST);
             glEnable(GL_BLEND);
             glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-            glDepthMask(GL_FALSE);
 
-            for (const auto& item : m_RenderQueue.transparent) {
-                auto& material = item.material ? item.material : m_DefaultMaterial;
-                material->Bind();
-
-                // Rebind UBOs just in case (redundant but safe)
-                m_CameraUBO->BindBase(GL_UNIFORM_BUFFER, CAMERA_UBO_BINDING);
-                m_LightsUBO->BindBase(GL_UNIFORM_BUFFER, LIGHTS_UBO_BINDING);
-
-                material->GetShader()->SetUniformMat4("u_Transform", item.transform);
-
-                if (item.mesh) {
-                    RenderCommand::Draw(*item.mesh, *material->GetShader());
+            if (m_UseEditorCamera) {
+                // 编辑器模式：显示游戏相机的视锥体（绿色）
+                if (gameCam) {
+                    RenderFrustum(m_GameFrustum, glm::vec3(0.0f, 1.0f, 0.0f));
                 }
+            }
+            else {
+                // 游戏模式：显示编辑器相机的视锥体（橙色）
+                RenderFrustum(m_EditorFrustum, glm::vec3(1.0f, 0.5f, 0.0f));
             }
 
             // 恢复状态
-            glDepthMask(GL_TRUE);
-            glDisable(GL_BLEND);
-            lastMaterial = nullptr;
+            if (prevDepthTest) glEnable(GL_DEPTH_TEST);
+            if (!prevBlend) glDisable(GL_BLEND);
+        }
 
-            // 解绑并恢复状态
-            m_Shader->UnBind();
-            UnbindRenderState();
-
-            error = glGetError();
-            if (error != GL_NO_ERROR) {
-                ITR_ERROR("OpenGL error after rendering: 0x%x", error);
-            }
+        // ==================== 结束渲染帧 ====================
+        Renderer::EndFrame();
+        UnbindRenderState();
+        // 检查 OpenGL 错误
+        error = glGetError();
+        if (error != GL_NO_ERROR) {
+            ITR_ERROR("OpenGL error after rendering: 0x%x", error);
         }
     }
 
+
+    // 新增碰撞体线框渲染函数
+    void RendererLayer::RenderColliderWireframes() {
+        auto lineShader = Application::GetShaderLibrary().Get("lineShader");
+        if (!lineShader) {
+            ITR_WARN("Line shader not found for collision debug rendering");
+            return;
+        }
+
+        // 保存当前状态
+        GLint prevPolygonMode[2];
+        glGetIntegerv(GL_POLYGON_MODE, prevPolygonMode);
+        GLboolean prevDepthTest = glIsEnabled(GL_DEPTH_TEST);
+        GLboolean prevBlend = glIsEnabled(GL_BLEND);
+
+        // 设置线框渲染状态
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+        glEnable(GL_DEPTH_TEST);
+        glDisable(GL_BLEND);
+        glLineWidth(2.0f);
+
+        lineShader->Bind();
+        lineShader->SetUniformMat4("u_ViewProjection",
+            GetActiveCamera().GetProjectionMat() * GetActiveCamera().GetViewMat());
+
+        // 设置线框颜色（红色表示碰撞体）
+        lineShader->SetUniformVec3("u_Color", glm::vec3(1.0f, 0.0f, 0.0f));
+
+        // 渲染线框
+        glBindVertexArray(m_ColliderVAO);
+        glDrawArrays(GL_LINES, 0, (GLsizei)m_ColliderLines.size());
+        glBindVertexArray(0);
+
+        lineShader->UnBind();
+
+        // 恢复状态
+        glPolygonMode(GL_FRONT_AND_BACK, prevPolygonMode[0]);
+        glLineWidth(1.0f);
+        if (!prevDepthTest) glDisable(GL_DEPTH_TEST);
+        if (prevBlend) glEnable(GL_BLEND);
+    }
+
+
+
+    void RendererLayer::SetupShaderUniforms(const std::shared_ptr<Shader>& shader) {
+        if (!shader) return;
+
+        shader->Bind();
+
+    }
+
+    void RendererLayer::RenderOpaqueObjects() {
+        std::shared_ptr<Material> lastMaterial = nullptr;
+
+        for (const auto& item : m_RenderQueue.opaque) {
+            auto& material = item.material ? item.material : m_DefaultMaterial;
+
+            if (material != lastMaterial) {
+                // 设置着色器并绑定材质
+                SetupShaderUniforms(material->GetShader());
+                material->Bind();
+
+                m_CameraUBO->BindBase(GL_UNIFORM_BUFFER, CAMERA_UBO_BINDING);
+                m_LightsUBO->BindBase(GL_UNIFORM_BUFFER, LIGHTS_UBO_BINDING);
+
+                lastMaterial = material;
+            }
+
+            // 设置物体的变换矩阵（这个通常不是通过 UBO 传递的）
+            auto shader = material->GetShader();
+            if (shader) {
+                shader->SetUniformMat4("u_Transform", item.transform);
+            }
+
+            // 使用 Renderer 提交
+            Renderer::Submit(material->GetShader(), item.mesh, item.transform);
+        }
+    }
+
+    void RendererLayer::RenderTransparentObjects() {
+        // 保存状态
+        GLboolean prevDepthMask;
+        glGetBooleanv(GL_DEPTH_WRITEMASK, &prevDepthMask);
+        GLboolean prevBlend = glIsEnabled(GL_BLEND);
+
+        // 设置透明物体渲染状态
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDepthMask(GL_FALSE);
+
+        std::shared_ptr<Material> lastMaterial = nullptr;
+
+        for (const auto& item : m_RenderQueue.transparent) {
+            auto& material = item.material ? item.material : m_DefaultMaterial;
+
+            if (material != lastMaterial) {
+                // 设置着色器并绑定材质
+                SetupShaderUniforms(material->GetShader());
+                material->Bind();
+
+                m_CameraUBO->BindBase(GL_UNIFORM_BUFFER, CAMERA_UBO_BINDING);
+                m_LightsUBO->BindBase(GL_UNIFORM_BUFFER, LIGHTS_UBO_BINDING);
+
+                lastMaterial = material;
+            }
+
+            // 设置物体的变换矩阵
+            auto shader = material->GetShader();
+            if (shader) {
+                shader->SetUniformMat4("u_Transform", item.transform);
+            }
+
+            // 使用 Renderer 提交
+            Renderer::Submit(material->GetShader(), item.mesh, item.transform);
+        }
+
+        // 恢复状态
+        glDepthMask(prevDepthMask);
+        if (!prevBlend) glDisable(GL_BLEND);
+    }
+
+    void RendererLayer::BindMaterial(const std::shared_ptr<Material>& material) {
+        material->Bind();
+
+        // 确保UBO绑定（材质绑定可能会切换shader）
+        m_CameraUBO->BindBase(GL_UNIFORM_BUFFER, CAMERA_UBO_BINDING);
+        m_LightsUBO->BindBase(GL_UNIFORM_BUFFER, LIGHTS_UBO_BINDING);
+    }
 
     void RendererLayer::CreateFramebuffer(uint32_t width, uint32_t height)
     {
@@ -221,7 +347,7 @@ namespace Intro {
 
         glGenTextures(1, &m_ColorTexture);
         glBindTexture(GL_TEXTURE_2D, m_ColorTexture);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA8, (GLsizei)width, (GLsizei)height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_SRGB8_ALPHA8, (GLsizei)width, (GLsizei)height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
@@ -238,11 +364,9 @@ namespace Intro {
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, m_ColorTexture, 0);
         glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, m_RBO);
 
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            ITR_ERROR("RendererLayer: Framebuffer is not complete! Error code: 0x%x", glCheckFramebufferStatus(GL_FRAMEBUFFER));
-        }
-
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+        
     }
 
     void RendererLayer::DestroyFramebuffer()
@@ -267,7 +391,7 @@ namespace Intro {
             return;
 
         CreateFramebuffer(width, height);
-        m_Camera.SetAspectRatio((float)width / (float)height);
+        GetActiveCamera().SetAspectRatio((float)width / (float)height);
     }
 
     void RendererLayer::BindRenderState()
@@ -291,7 +415,172 @@ namespace Intro {
         if (!m_SavedState.cullFace) glDisable(GL_CULL_FACE);
     }
 
+    Camera& RendererLayer::GetActiveCamera() {
+        if (m_UseEditorCamera) {
+            return m_EditorCamera;
+        }
+        else {
+            // 从场景获取主相机，如果获取失败则使用编辑器相机
+            Camera* mainCam = GetMainCameraFromScene();
+            return mainCam ? *mainCam : m_EditorCamera;
+        }
+    }
 
+    const Camera& RendererLayer::GetActiveCamera() const {
+        return const_cast<RendererLayer*>(this)->GetActiveCamera();
+    }
+
+    Camera* RendererLayer::GetMainCameraFromScene() {
+        auto* activeScene = Application::GetSceneManager().GetActiveScene();
+        if (!activeScene) return nullptr;
+
+        GameObject mainCamera = activeScene->GetMainCamera();
+        if (!mainCamera.IsValid()) {
+            mainCamera = activeScene->FindMainCamera();
+            if (mainCamera.IsValid()) {
+                activeScene->SetMainCamera(mainCamera);
+            }
+            else {
+                return nullptr;
+            }
+        }
+
+        // 确保有必要的组件
+        if (mainCamera.HasComponent<CameraComponent>() &&
+            mainCamera.HasComponent<TransformComponent>()) {
+
+            auto& cameraComp = mainCamera.GetComponent<CameraComponent>();
+            auto& transform = mainCamera.GetComponent<TransformComponent>();
+
+            // 直接返回游戏相机，避免重复同步
+            return m_GameCamera.get();
+        }
+
+        return nullptr;
+    }
+
+
+    std::unique_ptr<Camera> RendererLayer::CreateCameraForComponent(CameraComponent& comp, GameObject cameraObject) {
+        if (!cameraObject.HasComponent<TransformComponent>()) {
+            return nullptr;
+        }
+
+        auto& transform = cameraObject.GetComponent<TransformComponent>();
+
+        // 创建新的自由相机
+        auto camera = std::make_unique<FreeCamera>(m_Window);
+
+        // 设置位置和旋转
+        camera->SetPosition(transform.transform.position);
+        camera->SetRotation(transform.transform.rotation);
+
+        // 设置投影参数
+        camera->SetPerspective(
+            glm::radians(comp.fov),
+            (float)m_ViewportWidth / (float)m_ViewportHeight,
+            comp.nearClip,
+            comp.farClip
+        );
+
+        return camera;
+    }
+
+    void RendererLayer::SyncCameraWithTransform(Camera& camera, const Transform& transform) {
+        camera.SetPosition(transform.position);
+        camera.SetRotation(transform.rotation);
+    }
+
+    void RendererLayer::SyncGameCameraFromScene() {
+        Camera* mainCam = GetMainCameraFromScene();
+        if (mainCam) {
+            // 如果场景中有主相机，同步其参数到游戏相机
+            m_GameCamera->SetPosition(mainCam->GetPosition());
+            m_GameCamera->SetRotation(mainCam->GetRotation());
+            // 同步其他相机参数...
+        }
+    }
+
+    void RendererLayer::SetUseEditorCamera(bool useEditor) {
+        m_UseEditorCamera = useEditor;
+
+        if (!useEditor) {
+            // 切换到游戏相机时，确保场景中有主相机
+            auto* activeScene = Application::GetSceneManager().GetActiveScene();
+            if (activeScene) {
+                GameObject mainCamera = activeScene->FindMainCamera();
+                if (!mainCamera.IsValid()) {
+                    // 如果没有主相机，创建一个默认的
+                    activeScene->CreateDefaultMainCamera();
+                }
+            }
+        }
+    }
+
+    void RendererLayer::RenderFrustum(const Frustum& frustum, const glm::vec3& color) {
+        if (!m_ShowFrustum) return;
+
+        // 使用简单的线条着色器
+        auto lineShader = Application::GetShaderLibrary().Get("lineShader");
+        if (!lineShader) {
+            // 如果没有线条着色器，使用默认着色器
+            lineShader = m_Shader;
+        }
+
+        lineShader->Bind();
+
+        m_CameraUBO->BindBase(GL_UNIFORM_BUFFER, CAMERA_UBO_BINDING);
+
+        lineShader->SetUniformMat4("u_ViewProjection", GetActiveCamera().GetProjectionMat() * GetActiveCamera().GetViewMat());
+
+        // 设置颜色
+        lineShader->SetUniformVec3("u_Color", color);
+
+        // 获取视锥体角点
+        const auto& corners = frustum.GetCorners();
+
+        // 定义视锥体边（12条边）
+        const std::vector<std::pair<int, int>> edges = {
+            // 近平面
+            {0, 1}, {1, 2}, {2, 3}, {3, 0},
+            // 远平面
+            {4, 5}, {5, 6}, {6, 7}, {7, 4},
+            // 连接近远平面
+            {0, 4}, {1, 5}, {2, 6}, {3, 7}
+        };
+
+        // 渲染每条边
+        for (const auto& edge : edges) {
+            glm::vec3 start = corners[edge.first];
+            glm::vec3 end = corners[edge.second];
+
+            // 创建线段顶点数据
+            std::vector<float> lineVertices = {
+                start.x, start.y, start.z,
+                end.x, end.y, end.z
+            };
+
+            // 创建临时VAO和VBO来渲染线段
+            unsigned int VAO, VBO;
+            glGenVertexArrays(1, &VAO);
+            glGenBuffers(1, &VBO);
+
+            glBindVertexArray(VAO);
+            glBindBuffer(GL_ARRAY_BUFFER, VBO);
+            glBufferData(GL_ARRAY_BUFFER, lineVertices.size() * sizeof(float), lineVertices.data(), GL_STATIC_DRAW);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+
+            // 渲染线段
+            glDrawArrays(GL_LINES, 0, 2);
+
+            // 清理
+            glDeleteVertexArrays(1, &VAO);
+            glDeleteBuffers(1, &VBO);
+        }
+
+        lineShader->UnBind();
+    }
 
     void RendererLayer::OnEvent(Event& event)
     {
@@ -301,7 +590,7 @@ namespace Intro {
 
     bool RendererLayer::OnWindowResized(WindowResizeEvent& e)
     {
-        m_Camera.SetAspectRatio((float)e.GetWidth() / (float)e.GetHeight());
+        GetActiveCamera().SetAspectRatio((float)e.GetWidth() / (float)e.GetHeight());
         return false;
     }
 

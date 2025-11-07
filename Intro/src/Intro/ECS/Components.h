@@ -3,6 +3,7 @@
 #include "Intro/Math/Transform.h" // 你的 Transform 类
 #include "Intro/Renderer/Mesh.h"  // 你的 Mesh 类
 #include "Intro/Renderer/Model.h"
+#include "Intro/Renderer/Cameras/Camera.h"
 #include "Intro/Renderer/Material.h"
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtc/quaternion.hpp>
@@ -81,13 +82,76 @@ namespace Intro {
         LightComponent() = default;
     };
 
-    // 简单材质组件：持有 Material 智能指针（后面实现 Material 类）
+    struct CameraComponent {
+        // 相机参数
+        float fov = 60.0f;
+        float nearClip = 0.1f;
+        float farClip = 1000.0f;
+        bool isMainCamera = false;
+
+        CameraComponent() = default;
+        CameraComponent(float fov, float nearClip = 0.1f, float farClip = 1000.0f)
+            : fov(fov), nearClip(nearClip), farClip(farClip) {
+        }
+    };
+
+    // 简单材质组件
     struct MaterialComponent {
         std::shared_ptr<Material> material;
         bool Transparent = false;
         MaterialComponent(std::shared_ptr<Material> mat = nullptr, bool transparent = false)
             : material(std::move(mat)), Transparent(transparent) {
         }
+    };
+
+
+// 碰撞体类型
+    enum class ColliderType {
+        None = 0,
+        Box,
+        Sphere,
+        Capsule,
+        Mesh  // 用于复杂模型
+    };
+
+    // 基础碰撞体组件
+    struct ColliderComponent {
+        ColliderType type = ColliderType::Box;
+        glm::vec3 size = glm::vec3(1.0f);      // 对于Box：长宽高
+        float radius = 0.5f;                   // 对于Sphere/Capsule：半径
+        float height = 2.0f;                   // 对于Capsule：高度
+        glm::vec3 offset = glm::vec3(0.0f);    // 相对于物体中心的偏移
+
+        bool isTrigger = false;                // 是否是触发器
+        bool enabled = true;
+
+        ColliderComponent() = default;
+        ColliderComponent(ColliderType colliderType) : type(colliderType) {}
+    };
+
+    // 刚体组件
+    struct RigidbodyComponent {
+        float mass = 1.0f;
+        glm::vec3 velocity = glm::vec3(0.0f);
+        glm::vec3 angularVelocity = glm::vec3(0.0f);
+        glm::vec3 force = glm::vec3(0.0f);
+        glm::vec3 torque = glm::vec3(0.0f);
+
+        float drag = 0.0f;                    // 线性阻力
+        float angularDrag = 0.05f;            // 角阻力
+
+        bool useGravity = true;
+        bool isKinematic = false;             // 是否由代码控制（不受物理影响）
+        bool freezeRotation = false;          // 冻结旋转
+
+        RigidbodyComponent() = default;
+    };
+
+    // 物理材质
+    struct PhysicsMaterial {
+        float bounciness = 0.0f;              // 弹性
+        float friction = 0.5f;                // 摩擦力
+        float dynamicFriction = 0.3f;         // 动摩擦
     };
 
 } // namespace Intro

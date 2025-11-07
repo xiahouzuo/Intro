@@ -49,6 +49,32 @@ namespace Intro {
 
         size_t FindIndexByName(const std::string& name) const;
 
+        // ÔËÐÐ×´Ì¬¿ØÖÆ
+        bool IsPlaying() const { return m_IsPlaying; }
+        void StartRuntime() {
+            if (!m_IsPlaying) {
+                m_IsPlaying = true;
+                // ±£´æ³¡¾°×´Ì¬
+                SaveSceneState();
+                ITR_INFO("Entering Play Mode");
+            }
+        }
+
+        void StopRuntime() {
+            if (m_IsPlaying) {
+                m_IsPlaying = false;
+                // »Ö¸´³¡¾°×´Ì¬
+                RestoreSceneState();
+                ITR_INFO("Exiting Play Mode");
+            }
+        }
+
+        void ToggleRuntime() {
+            if (m_IsPlaying) StopRuntime();
+            else StartRuntime();
+        }
+
+
         // »Øµ÷
         std::function<void(const Scene&)> onSceneLoaded;
         std::function<void(const Scene&)> onSceneUnloaded;
@@ -56,8 +82,19 @@ namespace Intro {
         static constexpr size_t npos = static_cast<size_t>(-1);
 
     private:
+        // ³¡¾°×´Ì¬±£´æ
+        void SaveSceneState();
+        void RestoreSceneState();
+
+    private:
         std::vector<std::unique_ptr<Scene>> m_Scenes;
         size_t m_ActiveIndex = npos;
+
+        bool m_IsPlaying = false;
+
+
+        std::unordered_map<entt::entity, TransformComponent> m_SavedTransforms;
+        std::unordered_map<entt::entity, RigidbodyComponent> m_SavedRigidbodies;
     };
 
 } // namespace Intro

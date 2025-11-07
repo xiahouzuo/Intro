@@ -1,7 +1,7 @@
 #pragma once
 #include "UBO.h"
 #include "RenderConstant.h"
-#include "Camears/Camera.h"
+#include "Cameras/Camera.h"
 #include "Intro/ECS/Components.h"
 #include "Intro/ECS/ECS.h"
 #include "Intro/Math/Transform.h"

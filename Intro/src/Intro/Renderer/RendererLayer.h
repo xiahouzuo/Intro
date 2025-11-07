@@ -3,13 +3,15 @@
 #include "Intro/Layer.h"
 #include "Intro/Window.h"
 #include "Intro/Events/ApplicationEvent.h"
-#include "Intro/Renderer/Camears/FreeCamera.h"
+#include "Cameras/FreeCamera.h"
+#include "Cameras/Frustum.h"
 #include "UniformBuffers.h"
 #include "Shader.h"
 #include "Mesh.h"
 #include "Intro/Renderer/Model.h"
 #include "ShapeGenerator.h"
 #include "Intro/ECS/System.h"
+#include "Intro/ECS/GameObject.h"
 #include <memory>
 #include <vector>
 
@@ -34,9 +36,22 @@ namespace Intro {
 
         void ResizeViewport(uint32_t width, uint32_t height);
         GLuint GetSceneTextureID() const { return m_ColorTexture; }
-        const FreeCamera& GetCamera() const { return m_Camera; }
-        FreeCamera& GetCamera() { return m_Camera; }
 
+        void SetUseEditorCamera(bool useEditor);
+        bool IsUsingEditorCamera() const { return m_UseEditorCamera; };
+        Camera& GetActiveCamera();
+        const Camera& GetActiveCamera() const;
+
+        std::unique_ptr<Camera> CreateCameraForComponent(CameraComponent& comp, GameObject cameraObject);
+        void SyncCameraWithTransform(Camera& camera, const Transform& transform);
+        void SyncGameCameraFromScene();
+
+        bool GetShowFrustum() { return m_ShowFrustum; }
+        void SetShowFrustum(bool showFrustum) { m_ShowFrustum = showFrustum; }
+
+        bool GetShowColliders() const { return m_ShowColliders; }
+        void SetShowColliders(bool show) { m_ShowColliders = show; }
+        void RenderColliderWireframes();
     private:
         bool OnWindowResized(WindowResizeEvent& e);
 
@@ -45,10 +60,23 @@ namespace Intro {
         void BindRenderState();
         void UnbindRenderState();
 
+        void RenderOpaqueObjects();
+        void RenderTransparentObjects();
+        void BindMaterial(const std::shared_ptr<Material>& material);
+        void SetupShaderUniforms(const std::shared_ptr<Shader>& shader);
+
+
+        Camera* GetMainCameraFromScene();
+
+        void RenderFrustum(const Frustum& frustum, const glm::vec3& color = glm::vec3(1.0f, 0.5f, 0.0f));
     private:
         const Window& m_Window;
-        FreeCamera m_Camera;
-        std::unique_ptr<Shader> m_Shader;
+
+        std::unique_ptr<FreeCamera> m_GameCamera;
+        FreeCamera m_EditorCamera;
+        bool m_UseEditorCamera = true;
+
+        std::shared_ptr<Shader> m_Shader;
 
         std::vector<RenderSystem::RenderableData> m_RenderableData;
 
@@ -71,5 +99,15 @@ namespace Intro {
         float m_Time = 0.0f;
 
         std::shared_ptr<Material> m_DefaultMaterial;
+
+        Frustum m_EditorFrustum;
+        Frustum m_GameFrustum;
+        bool m_ShowFrustum = true;
+
+
+        std::vector<glm::vec3> m_ColliderLines;
+        GLuint m_ColliderVAO = 0;
+        GLuint m_ColliderVBO = 0;
+        bool m_ShowColliders = true; // 控制是否显示碰撞体线框
     };
 }

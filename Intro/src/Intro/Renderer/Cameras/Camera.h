@@ -17,10 +17,14 @@ namespace Intro {
         // 矩阵接口（派生类必须实现）
         virtual glm::mat4 GetViewMat() const = 0;
         virtual glm::vec3 GetPosition() const = 0;
+        virtual glm::quat GetRotation() const = 0;
         virtual glm::mat4 GetProjectionMat() const {
             return glm::perspective(glm::radians(Fov), AspectRatio, NearClip, FarClip);
         }
         virtual glm::vec3 GetFront() const = 0;
+        virtual void SetPosition(glm::vec3 position) = 0;
+        virtual void SetRotation(glm::quat rotation) = 0;
+        virtual void SetPerspective(float radins, float AspectRatio, float nearClip, float farClip) = 0;
 
         virtual void OnUpdate(float deltaTime) = 0;
 
@@ -37,6 +41,16 @@ namespace Intro {
             else {
                 AspectRatio = ar;
             }
+        }
+
+        void SetNearClip(float nearClip)
+        {
+            NearClip = nearClip;
+        }
+
+        void SetFarClip(float farClip)
+        {
+            FarClip = farClip;
         }
 
         float AspectRatio = 16.0f / 9.0f;

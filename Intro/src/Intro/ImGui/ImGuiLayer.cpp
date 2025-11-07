@@ -19,6 +19,8 @@
 #include <glm/gtx/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+
+
 namespace Intro {
 
 	// -------------------------------------------------------------------------
@@ -29,6 +31,7 @@ namespace Intro {
 		, m_SceneManager(sceneManager)
 		, m_RendererLayer(rendererLayer)
 	{
+		m_DefaultMaterial = std::make_shared<Material>(m_DefaultShader);
 		// 不在构造时尝试加载资源（避免硬编码路径）
 	}
 
@@ -43,7 +46,7 @@ namespace Intro {
 	void ImGuiLayer::OnAttach()
 	{
 		InitImGui();
-		RefreshEntityList();
+		RefreshGameObjectList();
 	}
 
 	void ImGuiLayer::OnDetach()
@@ -60,14 +63,22 @@ namespace Intro {
 		io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 		io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
 
-		ImGui::StyleColorsDark();
-		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-		{
-			ImGuiStyle& style = ImGui::GetStyle();
-			style.WindowRounding = 0.0f;
-			style.Colors[ImGuiCol_WindowBg].w = 1.0f;
+
+		// 或者如果你使用 Gamma 校正，确保 ImGui 知道
+		ImGui::GetIO().DisplayFramebufferScale = ImVec2(1.0f, 1.0f);
+
+		// 使用明亮的样式来测试
+		ImGui::StyleColorsDark(); // 临时使用亮色主题测试
+
+		ImGuiStyle& style = ImGui::GetStyle();
+
+		// 强制所有颜色为完全不透明
+		for (int i = 0; i < ImGuiCol_COUNT; i++) {
+			ImVec4& color = style.Colors[i];
+			color.w = 1.0f; // 设置 Alpha 为 1.0
 		}
 
+		style.Alpha = 1.0f;
 		GLFWwindow* window = (GLFWwindow*)Application::Get().GetWindow().GetNativeWindow();
 		IM_ASSERT(window);
 		ImGui_ImplGlfw_InitForOpenGL(window, true);
@@ -98,7 +109,17 @@ namespace Intro {
 	void ImGuiLayer::EndFrameAndRender()
 	{
 		ImGui::Render();
+
+		// 确保在渲染 ImGui 时使用正确的混合状态
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glDisable(GL_DEPTH_TEST); // ImGui 不需要深度测试
+
 		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		// 恢复状态（如果需要）
+		glEnable(GL_DEPTH_TEST);
+		glDisable(GL_BLEND);
 
 		ImGuiIO& io = ImGui::GetIO();
 		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
@@ -130,20 +151,24 @@ namespace Intro {
 		DrawMenuBar();
 		DrawDockSpaceHost();
 		DrawViewport();
-		ShowEntityManagerWindow();
-		ShowSceneControlsWindow();
 
+		if (m_ShowImportWindow) ShowImportModelWindow();
+
+		if (m_ShowGameObjectManager) {
+			ShowGameObjectManagerWindow();
+		}
+		if (m_ShowSceneControls) {
+			ShowSceneControlsWindow();
+		}
+		if (m_ShowRendererSettings) {
+			ShowRendererSettingsWindow();
+		}
 		if (m_ShowResourceBrowser) {
 			ShowResourceBrowserWindow();
 		}
-
-		if (m_SelectedEntity != entt::null)
-		{
-			SyncTransformEditor();
+		if (m_ShowEntityInspector && m_SelectedGameObject.IsValid()) {
 			ShowEntityInspectorWindow();
 		}
-
-		if (m_ShowImportWindow) ShowImportModelWindow();
 
 		HandleRenamePopup();
 
@@ -182,6 +207,39 @@ namespace Intro {
 	{
 		if (!ImGui::BeginMainMenuBar()) return;
 
+		//if (m_SceneManager) {
+		//	ImGui::SetCursorPosX(10.0f);
+
+		//	if (m_SceneManager->IsPlaying()) {
+		//		// 运行状态 - 显示停止按钮
+		//		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+		//		if (ImGui::Button("Stop", ImVec2(60, 0))) {
+		//			m_SceneManager->StopRuntime();
+		//		}
+		//		ImGui::PopStyleColor();
+
+		//		// 显示运行状态指示器
+		//		ImGui::SameLine();
+		//		ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "PLAYING");
+		//	}
+		//	else {
+		//		// 编辑状态 - 显示播放按钮
+		//		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.8f, 0.2f, 1.0f));
+		//		if (ImGui::Button("Play", ImVec2(60, 0))) {
+		//			m_SceneManager->StartRuntime();
+		//		}
+		//		ImGui::PopStyleColor();
+
+		//		// 显示编辑状态指示器
+		//		ImGui::SameLine();
+		//		ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "EDITING");
+		//	}
+
+		//	ImGui::SameLine();
+		//	ImGui::SetCursorPosX(150.0f);
+		//}
+
+
 		if (ImGui::BeginMenu("File"))
 		{
 			if (ImGui::MenuItem("Import Model...")) m_ShowImportWindow = true;
@@ -195,8 +253,6 @@ namespace Intro {
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("View")) {
-			//if (ImGui::MenuItem("Renderer Settings")) m_ShowRendererSettings = true;
-			//if (ImGui::MenuItem("Resource Manager")) m_ShowResourceManager = true;
 			ImGui::EndMenu();
 		}
 
@@ -218,6 +274,22 @@ namespace Intro {
 				ImGui::EndMenu();
 			}
 
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Window"))
+		{
+			ImGui::MenuItem("Entity Manager", nullptr, &m_ShowGameObjectManager);
+			ImGui::MenuItem("Inspector", nullptr, &m_ShowEntityInspector);
+			ImGui::MenuItem("Scene Controls", nullptr, &m_ShowSceneControls);
+			ImGui::MenuItem("Renderer Settings", nullptr, &m_ShowRendererSettings);
+			ImGui::MenuItem("Resource Browser", nullptr, &m_ShowResourceBrowser);
+			ImGui::Separator();
+			if (ImGui::MenuItem("Show All Windows")) {
+				// 显示所有窗口
+			}
+			if (ImGui::MenuItem("Hide All Windows")) {
+				// 隐藏所有窗口
+			}
 			ImGui::EndMenu();
 		}
 
@@ -265,7 +337,7 @@ namespace Intro {
 			m_ViewportSize = ImVec2(imageMax.x - imageMin.x, imageMax.y - imageMin.y);
 
 			// 在视口内绘制 gizmo（如果选中实体）
-			if (m_SelectedEntity != entt::null)
+			if (m_SelectedGameObject.IsValid())
 				RenderGizmo();
 		}
 		else
@@ -281,47 +353,43 @@ namespace Intro {
 	// -------------------------------------------------------------------------
 	// Entity manager / inspector / scene controls
 	// -------------------------------------------------------------------------
-	void ImGuiLayer::ShowEntityManagerWindow()
+	void ImGuiLayer::ShowGameObjectManagerWindow()
 	{
 		ImGui::Begin("Entity Manager");
 
-		if (ImGui::Button("Refresh List")) RefreshEntityList();
+		if (ImGui::Button("Refresh List")) RefreshGameObjectList();
 		ImGui::Separator();
 
 		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
 		if (!activeScene) { ImGui::Text("No active scene"); ImGui::End(); return; }
 
-		auto& registry = activeScene->GetECS().GetRegistry();
-		for (auto entity : m_CachedEntities)
+		for (size_t i = 0; i < m_CachedGameObjects.size(); ++i)
 		{
-			if (!registry.valid(entity)) continue;
+			const GameObject& go = m_CachedGameObjects[i];
+			if (!go.IsValid()) continue;
 
-			std::string name = "Entity " + std::to_string(static_cast<uint32_t>(entity));
-			if (registry.any_of<TagComponent>(entity))
-				name = registry.get<TagComponent>(entity).Tag;
+			std::string name = go.GetName();
+			if (name.empty()) name = "GameObject";
 
-			ImGui::PushID(static_cast<uint32_t>(entity));
-			bool isSelected = (m_SelectedEntity == entity);
+			ImGui::PushID(static_cast<int>(i));
+			bool isSelected = (m_SelectedGameObject.IsValid() && m_SelectedGameObject == go);
 			if (ImGui::Selectable(name.c_str(), isSelected))
 			{
-				m_SelectedEntity = entity;
-				m_SelectedEntityName = name;
+				m_SelectedGameObject = go;
+				m_SelectedGameObjectName = name;
 			}
 
 			if (ImGui::IsItemClicked(1))
 			{
-				m_EditingEntity = entity;
+				// 右键：弹出重命名窗口 - 使用 GameObject
+				m_EditingGameObject = go;
 				m_IsEditingTag = true;
-				if (registry.any_of<TagComponent>(entity))
-				{
-					std::string t = registry.get<TagComponent>(entity).Tag;
-					std::strncpy(m_TagEditBuffer, t.c_str(), sizeof(m_TagEditBuffer) - 1);
-				}
-				else
-				{
-					std::strncpy(m_TagEditBuffer, name.c_str(), sizeof(m_TagEditBuffer) - 1);
-				}
+
+				// 读取 tag/name 到缓冲区
+				std::string t = go.GetName();
+				std::strncpy(m_TagEditBuffer, t.c_str(), sizeof(m_TagEditBuffer) - 1);
 				m_TagEditBuffer[sizeof(m_TagEditBuffer) - 1] = '\0';
+
 				m_ShouldOpenRenamePopup = true;
 				m_RenamePopupNeedsFocus = true;
 			}
@@ -332,21 +400,23 @@ namespace Intro {
 		ImGui::End();
 	}
 
+
 	void ImGuiLayer::ShowEntityInspectorWindow()
 	{
 		ImGui::Begin("Inspector");
 
-		if (m_SelectedEntity == entt::null) { ImGui::Text("No entity selected"); ImGui::End(); return; }
+		if (!m_SelectedGameObject.IsValid()) { ImGui::Text("No entity selected"); ImGui::End(); return; }
 		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
 		if (!activeScene) { ImGui::End(); return; }
 
-		auto& registry = activeScene->GetECS().GetRegistry();
-		if (!registry.valid(m_SelectedEntity)) { m_SelectedEntity = entt::null; ImGui::End(); return; }
-
-		ImGui::Text("Entity: %s", m_SelectedEntityName.c_str());
+		ImGui::Text("Entity: %s", m_SelectedGameObjectName.c_str());
 		ImGui::Separator();
 
-		if (registry.any_of<TransformComponent>(m_SelectedEntity))
+		bool isPlaying = m_SceneManager && m_SceneManager->IsPlaying();
+		ImGui::BeginDisabled(isPlaying);
+
+		// --- Transform (单一、完整的实现) ---
+		if (m_SelectedGameObject.HasComponent<TransformComponent>())
 		{
 			if (ImGui::CollapsingHeader("Transform", ImGuiTreeNodeFlags_DefaultOpen))
 			{
@@ -391,11 +461,12 @@ namespace Intro {
 			}
 		}
 
-		if (registry.any_of<LightComponent>(m_SelectedEntity))
+		// --- Light (保持原逻辑) ---
+		if (m_SelectedGameObject.HasComponent<LightComponent>())
 		{
 			if (ImGui::CollapsingHeader("Light", ImGuiTreeNodeFlags_DefaultOpen))
 			{
-				auto& light = registry.get<LightComponent>(m_SelectedEntity);
+				auto& light = m_SelectedGameObject.GetComponent<LightComponent>();
 				const char* types[] = { "Directional", "Point", "Spot" };
 				int cur = (int)light.Type;
 				if (ImGui::Combo("Type", &cur, types, 3)) light.Type = (LightType)cur;
@@ -405,11 +476,11 @@ namespace Intro {
 				if (light.Type == LightType::Directional)
 				{
 					ImGui::Text("Direction controlled by entity rotation");
-					if (ImGui::Button("Down")) { auto& t = registry.get<TransformComponent>(m_SelectedEntity); t.transform.rotation = glm::quat(1.0f, 0, 0, 0); SyncTransformEditor(); }
+					if (ImGui::Button("Down")) { auto& t = m_SelectedGameObject.GetComponent<TransformComponent>(); t.transform.rotation = glm::quat(1.0f, 0, 0, 0); SyncTransformEditor(); }
 					ImGui::SameLine();
-					if (ImGui::Button("Up")) { auto& t = registry.get<TransformComponent>(m_SelectedEntity); t.transform.rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(1, 0, 0)); SyncTransformEditor(); }
+					if (ImGui::Button("Up")) { auto& t = m_SelectedGameObject.GetComponent<TransformComponent>(); t.transform.rotation = glm::angleAxis(glm::radians(180.0f), glm::vec3(1, 0, 0)); SyncTransformEditor(); }
 					ImGui::SameLine();
-					if (ImGui::Button("Forward")) { auto& t = registry.get<TransformComponent>(m_SelectedEntity); t.transform.rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1, 0, 0)); SyncTransformEditor(); }
+					if (ImGui::Button("Forward")) { auto& t = m_SelectedGameObject.GetComponent<TransformComponent>(); t.transform.rotation = glm::angleAxis(glm::radians(-90.0f), glm::vec3(1, 0, 0)); SyncTransformEditor(); }
 				}
 
 				if (light.Type == LightType::Point || light.Type == LightType::Spot)
@@ -423,19 +494,239 @@ namespace Intro {
 			}
 		}
 
+		if (m_SelectedGameObject.HasComponent<CameraComponent>())
+		{
+			if (ImGui::CollapsingHeader("Camera", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				auto& camera = m_SelectedGameObject.GetComponent<CameraComponent>();
+				bool cameraChanged = false;
+
+				// FOV 滑块
+				float oldFov = camera.fov;
+				ImGui::DragFloat("Field of View", &camera.fov, 0.5f, 1.0f, 120.0f, "%.1f deg");
+				if (camera.fov != oldFov) {
+					cameraChanged = true;
+				}
+
+				// 近裁剪面
+				float oldNear = camera.nearClip;
+				ImGui::DragFloat("Near Clip", &camera.nearClip, 0.01f, 0.001f, 10.0f);
+				if (camera.nearClip != oldNear) {
+					cameraChanged = true;
+				}
+
+				// 远裁剪面
+				float oldFar = camera.farClip;
+				ImGui::DragFloat("Far Clip", &camera.farClip, 1.0f, 10.0f, 10000.0f);
+				if (camera.farClip != oldFar) {
+					cameraChanged = true;
+				}
+
+				// 主相机标记
+				bool oldIsMain = camera.isMainCamera;
+				ImGui::Checkbox("Is Main Camera", &camera.isMainCamera);
+				if (camera.isMainCamera != oldIsMain) {
+					cameraChanged = true;
+
+					// 如果设置为main camera，确保场景中只有一个main camera
+					if (camera.isMainCamera && m_SceneManager) {
+						auto* activeScene = m_SceneManager->GetActiveScene();
+						if (activeScene) {
+							// 清除其他相机的main标记
+							auto view = activeScene->GetECS().GetRegistry().view<CameraComponent>();
+							for (auto entity : view) {
+								if (entity != m_SelectedGameObject.GetEntity()) {
+									auto& otherCam = view.get<CameraComponent>(entity);
+									otherCam.isMainCamera = false;
+								}
+							}
+
+							// 更新场景的主相机引用
+							activeScene->SetMainCamera(m_SelectedGameObject);
+						}
+					}
+				}
+
+				// 显示相机信息和控制
+				ImGui::Separator();
+				ImGui::Text("Camera Control:");
+
+				auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
+				bool isMainCamera = false;
+				if (activeScene) {
+					GameObject mainCam = activeScene->GetMainCamera();
+					isMainCamera = (mainCam.IsValid() && mainCam == m_SelectedGameObject);
+				}
+
+				// 显示当前相机状态
+				if (isMainCamera) {
+					ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "✓ MAIN CAMERA");
+				}
+				else {
+					ImGui::TextColored(ImVec4(0.5f, 0.5f, 0.5f, 1.0f), "Secondary Camera");
+				}
+
+				// 显示当前视图状态
+				bool isUsingEditorCamera = m_RendererLayer ? m_RendererLayer->IsUsingEditorCamera() : true;
+				if (isUsingEditorCamera) {
+					ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Current View: Editor Camera");
+				}
+				else {
+					if (isMainCamera) {
+						ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Current View: This Camera");
+					}
+					else {
+						ImGui::TextColored(ImVec4(1.0f, 0.0f, 0.0f, 1.0f), "Current View: Other Camera");
+					}
+				}
+
+				ImGui::Spacing();
+
+				// 相机控制按钮
+				if (isUsingEditorCamera) {
+					// 当前使用编辑器相机 - 提供切换到游戏相机的选项
+					if (ImGui::Button("Switch to This Camera", ImVec2(-1, 0))) {
+						if (m_RendererLayer) {
+							// 确保这是主相机
+							camera.isMainCamera = true;
+							if (m_SceneManager) {
+								auto* activeScene = m_SceneManager->GetActiveScene();
+								if (activeScene) {
+									// 清除其他相机的main标记
+									auto view = activeScene->GetECS().GetRegistry().view<CameraComponent>();
+									for (auto entity : view) {
+										if (entity != m_SelectedGameObject.GetEntity()) {
+											auto& otherCam = view.get<CameraComponent>(entity);
+											otherCam.isMainCamera = false;
+										}
+									}
+
+									activeScene->SetMainCamera(m_SelectedGameObject);
+								}
+							}
+							// 切换到游戏相机
+							m_RendererLayer->SetUseEditorCamera(false);
+						}
+					}
+				}
+				else {
+					// 当前使用游戏相机 - 提供切换回编辑器相机的选项
+					if (ImGui::Button("Switch to Editor Camera", ImVec2(-1, 0))) {
+						if (m_RendererLayer) {
+							m_RendererLayer->SetUseEditorCamera(true);
+						}
+					}
+
+					// 如果这不是当前激活的主相机，提供设置为当前相机的选项
+					if (!isMainCamera) {
+						ImGui::Spacing();
+						if (ImGui::Button("Set as Main Camera", ImVec2(-1, 0))) {
+							if (m_RendererLayer && m_SceneManager) {
+								auto* activeScene = m_SceneManager->GetActiveScene();
+								if (activeScene) {
+									// 清除其他相机的main标记
+									auto view = activeScene->GetECS().GetRegistry().view<CameraComponent>();
+									for (auto entity : view) {
+										auto& otherCam = view.get<CameraComponent>(entity);
+										otherCam.isMainCamera = false;
+									}
+
+									// 设置这个相机为主相机
+									camera.isMainCamera = true;
+									activeScene->SetMainCamera(m_SelectedGameObject);
+
+									// 确保渲染器更新
+									m_RendererLayer->SyncGameCameraFromScene();
+								}
+							}
+						}
+					}
+				}
+
+				ImGui::Spacing();
+
+				// 重置按钮
+				if (ImGui::Button("Reset to Default", ImVec2(-1, 0))) {
+					camera.fov = 60.0f;
+					camera.nearClip = 0.1f;
+					camera.farClip = 1000.0f;
+					cameraChanged = true;
+				}
+
+				// 如果相机参数发生变化，可能需要重新创建相机
+				if (cameraChanged && m_RendererLayer) {
+					// 如果这是主相机且正在使用游戏相机，可能需要更新渲染器
+					if (camera.isMainCamera && !m_RendererLayer->IsUsingEditorCamera()) {
+						// 强制渲染层重新同步游戏相机
+						m_RendererLayer->SyncGameCameraFromScene();
+					}
+				}
+			}
+		}
+
+		// End disabled scope (必须配对)
+		ImGui::EndDisabled();
+
 		ImGui::End();
 	}
+
 
 	void ImGuiLayer::ShowSceneControlsWindow()
 	{
 		ImGui::Begin("Scene Controls");
 
-		if (ImGui::Button("Clear Scene") && m_SceneManager)
-		{
-			// 如果你实现了 ClearActiveScene，放开注释
-			// m_SceneManager->ClearActiveScene();
+		if (m_SceneManager && m_RendererLayer) {
+			ImGui::Text("Runtime: ");
+			ImGui::SameLine();
+
+			if (m_SceneManager->IsPlaying()) {
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
+				if (ImGui::Button("Stop")) {
+					m_SceneManager->StopRuntime();
+					// 停止时切换回编辑器相机
+					m_RendererLayer->SetUseEditorCamera(true);
+				}
+				ImGui::PopStyleColor();
+
+				ImGui::SameLine();
+				ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Playing - Game Camera");
+			}
+			else {
+				ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.8f, 0.2f, 1.0f));
+				if (ImGui::Button("Play")) {
+					m_SceneManager->StartRuntime();
+					// 播放时切换到游戏相机
+					m_RendererLayer->SetUseEditorCamera(false);
+				}
+				ImGui::PopStyleColor();
+
+				ImGui::SameLine();
+				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "Editing - Editor Camera");
+			}
+
+			ImGui::SameLine();
+			if (ImGui::Button("Pause")) {
+				// 可以添加暂停功能
+			}
+
+			// 显示当前相机模式
+			ImGui::Separator();
+			if (m_RendererLayer->IsUsingEditorCamera()) {
+				ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Current: Editor Camera");
+			}
+			else {
+				ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.5f, 1.0f), "Current: Game Camera");
+
+				// 显示游戏相机信息
+				auto* activeScene = m_SceneManager->GetActiveScene();
+				if (activeScene) {
+					GameObject mainCam = activeScene->GetMainCamera();
+					if (mainCam.IsValid()) {
+						ImGui::Text("Main Camera: %s", mainCam.GetName().c_str());
+					}
+				}
+			}
 		}
-		ImGui::Separator();
 
 		ImGui::Text("Gizmo Operation:");
 		if (ImGui::RadioButton("Translate (W)", m_GizmoOperation == ImGuizmo::TRANSLATE)) m_GizmoOperation = ImGuizmo::TRANSLATE;
@@ -488,13 +779,14 @@ namespace Intro {
 	// -------------------------------------------------------------------------
 	void ImGuiLayer::HandleRenamePopup()
 	{
-		if (!m_IsEditingTag || m_EditingEntity == entt::null) return;
+		// 如果没有正在编辑的 GameObject 就返回
+		if (!m_IsEditingTag || !m_EditingGameObject.IsValid()) return;
 
 		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
 		if (!activeScene)
 		{
 			m_IsEditingTag = false;
-			m_EditingEntity = entt::null;
+			m_EditingGameObject = GameObject();
 			m_ShouldOpenRenamePopup = false;
 			m_RenamePopupNeedsFocus = false;
 			return;
@@ -532,18 +824,29 @@ namespace Intro {
 
 				if (!newTag.empty())
 				{
-					auto& ecs = activeScene->GetECS();
-					if (ecs.HasComponent<TagComponent>(m_EditingEntity))
-						ecs.GetComponent<TagComponent>(m_EditingEntity).Tag = newTag;
-					else
-						ecs.AddComponent<TagComponent>(m_EditingEntity, newTag);
+					auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
+					if (activeScene)
+					{
+						// 使用 GameObject 接口写入 TagComponent
+						if (m_EditingGameObject.IsValid())
+						{
+							if (m_EditingGameObject.HasComponent<TagComponent>())
+							{
+								m_EditingGameObject.GetComponent<TagComponent>().Tag = newTag;
+							}
+							else
+							{
+								// 如果 GameObject 管理 AddComponent，可直接用它
+								m_EditingGameObject.AddComponent<TagComponent>(newTag);
+							}
 
-					if (m_EditingEntity == m_SelectedEntity) m_SelectedEntityName = newTag;
-					RefreshEntityList();
+							if (m_EditingGameObject == m_SelectedGameObject) m_SelectedGameObjectName = newTag;
+						}
+					}
+					RefreshGameObjectList();
 				}
-
 				m_IsEditingTag = false;
-				m_EditingEntity = entt::null;
+				m_EditingGameObject = GameObject();
 				ImGui::CloseCurrentPopup();
 			}
 
@@ -551,7 +854,7 @@ namespace Intro {
 			if (ImGui::Button("Cancel", ImVec2(120, 0)))
 			{
 				m_IsEditingTag = false;
-				m_EditingEntity = entt::null;
+				m_EditingGameObject = GameObject();
 				m_RenamePopupNeedsFocus = false;
 				ImGui::CloseCurrentPopup();
 			}
@@ -566,16 +869,14 @@ namespace Intro {
 	void ImGuiLayer::RenderGizmo()
 	{
 		// 基本检查
-		if (m_SelectedEntity == entt::null || !m_RendererLayer || !m_SceneManager) return;
+		if (!m_SelectedGameObject.IsValid() || !m_RendererLayer || !m_SceneManager) return;
 
 		auto* activeScene = m_SceneManager->GetActiveScene();
 		if (!activeScene) return;
 
-		auto& registry = activeScene->GetECS().GetRegistry();
-		if (!registry.valid(m_SelectedEntity)) { m_SelectedEntity = entt::null; return; }
-		if (!registry.any_of<TransformComponent>(m_SelectedEntity)) return;
+		if (!m_SelectedGameObject.HasComponent<TransformComponent>()) return;
 
-		auto camera = m_RendererLayer->GetCamera();
+		const Camera& camera = m_RendererLayer->GetActiveCamera();
 		glm::mat4 view = camera.GetViewMat();
 		glm::mat4 proj = camera.GetProjectionMat();
 
@@ -583,7 +884,7 @@ namespace Intro {
 		ImGuizmo::SetDrawlist(ImGui::GetWindowDrawList());
 		ImGuizmo::SetRect(m_ViewportOffset.x, m_ViewportOffset.y, m_ViewportSize.x, m_ViewportSize.y);
 
-		auto& tc = registry.get<TransformComponent>(m_SelectedEntity);
+		auto& tc = m_SelectedGameObject.GetComponent<TransformComponent>();
 		glm::mat4 model = glm::translate(glm::mat4(1.0f), tc.transform.position) *
 			glm::toMat4(tc.transform.rotation) *
 			glm::scale(glm::mat4(1.0f), tc.transform.scale);
@@ -613,7 +914,7 @@ namespace Intro {
 			glm::vec3 newScale(scaleArr[0], scaleArr[1], scaleArr[2]);
 			glm::quat newQuat = glm::quat_cast(glm::mat3(model));
 
-			auto& comp = registry.get<TransformComponent>(m_SelectedEntity);
+			auto& comp = m_SelectedGameObject.GetComponent<TransformComponent>();
 			comp.transform.position = newTranslation;
 			comp.transform.rotation = newQuat;
 			comp.transform.scale = newScale;
@@ -628,17 +929,16 @@ namespace Intro {
 	// -------------------------------------------------------------------------
 	// Utilities: entity list, import, create primitives/lights, transform sync
 	// -------------------------------------------------------------------------
-	void ImGuiLayer::RefreshEntityList()
+	void ImGuiLayer::RefreshGameObjectList()
 	{
-		m_CachedEntities.clear();
+		m_CachedGameObjects.clear();
+
 		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
 		if (!activeScene) return;
 
-		auto& registry = activeScene->GetECS().GetRegistry();
-		std::unordered_set<entt::entity> set;
-		auto view = registry.view<TransformComponent>();
-		for (auto e : view) set.insert(e);
-		m_CachedEntities.assign(set.begin(), set.end());
+		// 从 Scene 的 GameObjectManager 获取 GameObject 列表（你已有该接口）
+		GameObjectManager& gom = activeScene->GetGameObjectManager();
+		m_CachedGameObjects = gom.GetAllGameObjects();
 	}
 
 	bool ImGuiLayer::ImportModel(const std::string& modelPath)
@@ -653,14 +953,22 @@ namespace Intro {
 			return false;
 		}
 
-		auto entity = activeScene->GetECS().CreateEntity();
-		auto& reg = activeScene->GetECS().GetRegistry();
-		reg.emplace<TagComponent>(entity, "model");
-		reg.emplace<TransformComponent>(entity);
-		reg.emplace<ModelComponent>(entity, model);
-		reg.emplace<MaterialComponent>(entity, m_DefaultMaterial ? m_DefaultMaterial : std::shared_ptr<Material>());
+		auto defaultShader = Application::Get().GetShaderLibrary().Get("defaultShader");
+		std::shared_ptr<Material> material = std::make_shared<Material>(defaultShader);
 
-		RefreshEntityList();
+		GameObject CreateModel = activeScene->CreateGameObject("model");
+
+		CreateModel.AddComponent<TagComponent>("model");
+		CreateModel.AddComponent<TransformComponent>();
+		CreateModel.AddComponent<ModelComponent>(model);
+		CreateModel.AddComponent<MaterialComponent>(material);
+
+		// 选中新创建的实体（用 GameObject 包装）
+		m_SelectedGameObject = CreateModel;
+		m_SelectedGameObjectName = "model";
+		SyncTransformEditor();
+
+		RefreshGameObjectList();
 		return true;
 	}
 
@@ -690,17 +998,58 @@ namespace Intro {
 		default: return;
 		}
 
+		auto defaultShader = Application::Get().GetShaderLibrary().Get("defaultShader");
+		std::shared_ptr<Material> material = std::make_shared<Material>(defaultShader);
+
 		std::vector<std::shared_ptr<Texture>> emptyTextures;
 		auto meshPtr = std::make_shared<Mesh>(std::move(verts), std::move(inds), std::move(emptyTextures));
 
-		auto entity = activeScene->GetECS().CreateEntity();
-		auto& reg = activeScene->GetECS().GetRegistry();
-		reg.emplace<TagComponent>(entity, name);
-		reg.emplace<TransformComponent>(entity);
-		reg.emplace<MeshComponent>(entity, meshPtr);
-		reg.emplace<MaterialComponent>(entity, m_DefaultMaterial ? m_DefaultMaterial : std::shared_ptr<Material>());
+		// 创建GameObject
+		GameObject primitive = activeScene->CreateGameObject(name);
+		ITR_INFO("GameObject created: {}", primitive.IsValid());
 
-		RefreshEntityList();
+		// 检查组件
+		ITR_INFO("Has Transform: {}", primitive.HasComponent<TransformComponent>());
+		ITR_INFO("Has Tag: {}", primitive.HasComponent<TagComponent>());
+
+		// 添加网格和材质组件
+		primitive.AddComponent<MeshComponent>(meshPtr);
+		ITR_INFO("MeshComponent added: {}", primitive.HasComponent<MeshComponent>());
+
+		primitive.AddComponent<MaterialComponent>(material);
+		ITR_INFO("MaterialComponent added: {}", primitive.HasComponent<MaterialComponent>());
+
+		switch (type)
+		{
+		case ShapeType::Null:
+			break;
+		case ShapeType::Cube:
+			primitive.AddComponent<ColliderComponent>(ColliderType::Box);
+			primitive.GetComponent<ColliderComponent>().size = glm::vec3(1.f);
+			primitive.AddComponent<RigidbodyComponent>();
+			primitive.GetComponent<RigidbodyComponent>().useGravity = false;
+			break;
+		case ShapeType::Sphere:
+			primitive.AddComponent<ColliderComponent>(ColliderType::Sphere);
+			primitive.GetComponent<ColliderComponent>().radius = 0.5f;
+			primitive.AddComponent<RigidbodyComponent>();
+			break;
+		case ShapeType::Plane:
+			primitive.AddComponent<ColliderComponent>(ColliderType::Box);
+			primitive.GetComponent<ColliderComponent>().size = glm::vec3(1.0f, 0.1f, 1.0f);
+			break;
+		default:
+			break;
+		}
+
+		// 选中新创建实体
+		m_SelectedGameObject = primitive;
+		m_SelectedGameObjectName = name;
+		SyncTransformEditor();
+
+		RefreshGameObjectList();
+		ITR_INFO("Primitive creation completed");
+
 	}
 
 	void ImGuiLayer::CreateLight(LightType type)
@@ -708,11 +1057,10 @@ namespace Intro {
 		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
 		if (!activeScene || !m_RendererLayer) return;
 
-		auto camera = m_RendererLayer->GetCamera();
+		const Camera& camera = m_RendererLayer->GetActiveCamera();
 		glm::vec3 camPos = camera.GetPosition();
 		glm::vec3 camForward = camera.GetFront();
 
-		auto entity = activeScene->CreateEntity();
 		std::string lightName;
 		LightComponent light;
 		light.Type = type;
@@ -739,7 +1087,8 @@ namespace Intro {
 			break;
 		}
 
-		activeScene->GetECS().AddComponent<TagComponent>(entity, lightName);
+		GameObject lightObject = activeScene->CreateGameObject(lightName);
+		lightObject.AddComponent<TagComponent>(lightName);
 
 		TransformComponent tc;
 		if (type == LightType::Directional) {
@@ -749,13 +1098,14 @@ namespace Intro {
 		else {
 			tc.transform.position = camPos + camForward * 5.0f;
 		}
-		activeScene->GetECS().AddComponent<TransformComponent>(entity, tc);
-		activeScene->GetECS().AddComponent<LightComponent>(entity, light);
+		lightObject.AddComponent<TransformComponent>( tc);
+		lightObject.AddComponent<LightComponent>(light);
 
-		m_SelectedEntity = entity;
-		m_SelectedEntityName = lightName;
+		// 选中新建灯光（用 GameObject 包装）
+		m_SelectedGameObject = lightObject;
+		m_SelectedGameObjectName = lightName;
 		SyncTransformEditor();
-		RefreshEntityList();
+		RefreshGameObjectList();
 
 		ITR_INFO("Created {} at ({:.2f},{:.2f},{:.2f})", lightName, tc.transform.position.x, tc.transform.position.y, tc.transform.position.z);
 	}
@@ -767,6 +1117,21 @@ namespace Intro {
 		Config& config = Config::Get();
 		auto& graphicsConfig = config.GetGraphicsConfig();
 		bool configChanged = false;
+
+		// 视锥体可视化控制
+		if (m_RendererLayer) {
+			ImGui::Separator();
+			ImGui::Text("Frustum Visualization");
+
+			// 这里需要为 RendererLayer 添加 Get/Set 方法
+			 bool showFrustum = m_RendererLayer->GetShowFrustum();
+			 if (ImGui::Checkbox("Show Camera Frustum", &showFrustum)) {
+			     m_RendererLayer->SetShowFrustum(showFrustum);
+			 }
+
+			ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.0f, 1.0f), "Orange: Editor Camera");
+			ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "Green: Game Camera");
+		}
 
 		// MSAA 设置
 		if (ImGui::Checkbox("Enable MSAA", &graphicsConfig.EnableMSAA)) {
@@ -838,12 +1203,12 @@ namespace Intro {
 		ImGui::End();
 	}
 
-	// 实现资源浏览器窗口
-// --- Replace existing ShowResourceBrowserWindow and DrawFileTreeNode implementations with this block ---
+	// 实现资源浏览器窗口（保持你原始实现）...
+	// （这部分未改动，略去以节省篇幅 — 实际文件保留你提供的完整实现）
+	// ...（请在实际替换时保留你原始 ShowResourceBrowserWindow / DrawFileTreeNode 等实现）
 
-	static const char* SortModeNames[] = { "Name", "Date", "Type" };
-
-	void ImGuiLayer::ShowResourceBrowserWindow() {
+	void ImGuiLayer::ShowResourceBrowserWindow()
+	{
 		ImGui::Begin("Resource Browser", &m_ShowResourceBrowser);
 
 		auto& resourceManager = ResourceManager::Get();
@@ -875,13 +1240,11 @@ namespace Intro {
 				resourceManager.RefreshFileTree();
 			}
 		}
-
 		ImGui::SameLine();
 		ImGui::TextUnformatted("Search:");
 		ImGui::SameLine();
 		ImGui::SetNextItemWidth(200.0f);
 		ImGui::InputText("##ResourceSearch", &m_ResourceSearch);
-
 		ImGui::SameLine();
 		ImGui::Checkbox("Show hidden", &m_ShowHiddenFiles);
 		ImGui::SameLine();
@@ -903,12 +1266,16 @@ namespace Intro {
 			[&](std::shared_ptr<ResourceFileNode> n) -> bool {
 			if (!n) return false;
 			if (m_ResourceSearch.empty()) return true;
+
 			std::string name = n->info.name;
 			std::string lowerName = name;
 			std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+
 			std::string lowerSearch = m_ResourceSearch;
 			std::transform(lowerSearch.begin(), lowerSearch.end(), lowerSearch.begin(), ::tolower);
+
 			if (lowerName.find(lowerSearch) != std::string::npos) return true;
+
 			for (auto& c : n->children) {
 				if (matchesSearch(c)) return true;
 			}
@@ -921,6 +1288,7 @@ namespace Intro {
 
 		// Left pane: tree
 		ImGui::BeginChild("ResourceTreePane", ImVec2(0, 0), true);
+
 		// Breadcrumb
 		ImGui::Text("Root: %s", fileTree->info.path.c_str());
 		ImGui::Separator();
@@ -942,20 +1310,20 @@ namespace Intro {
 			const char* icon = "📁";
 			switch (node->info.type) {
 			case ResourceType::Texture: icon = "🖼️"; break;
-			case ResourceType::Model: icon = "🎯"; break;
-			case ResourceType::Shader: icon = "🔮"; break;
-			case ResourceType::Material: icon = "🎨"; break;
-			case ResourceType::Scene: icon = "🌍"; break;
+			case ResourceType::Model:   icon = "🎯"; break;
+			case ResourceType::Shader:  icon = "🔮"; break;
+			case ResourceType::Material:icon = "🎨"; break;
+			case ResourceType::Scene:   icon = "🌍"; break;
 			default: icon = node->children.empty() ? "📄" : "📁"; break;
 			}
 
 			std::string label = std::string(icon) + " " + node->info.name;
-
 			bool nodeOpen = ImGui::TreeNodeEx((void*)node.get(), flags, "%s", label.c_str());
 
 			// click / selection
 			if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
 				m_SelectedResourceNode = node;
+
 				// Double-click open action
 				if (ImGui::IsMouseDoubleClicked(0)) {
 					switch (node->info.type) {
@@ -1105,12 +1473,8 @@ namespace Intro {
 	void ImGuiLayer::DrawFileTreeNode(std::shared_ptr<ResourceFileNode> node) {
 		// kept for compatibility with other code that might call this method directly
 		if (!node) return;
-
-		// default simple delegator using new UI
-		// (you can keep this or remove if not used elsewhere)
 		ImGui::Text("%s", node->info.name.c_str());
 	}
-
 
 	void ImGuiLayer::HandleResourceDragDrop(std::shared_ptr<ResourceFileNode> node) {
 		if (!node) return;
@@ -1152,17 +1516,20 @@ namespace Intro {
 		reg.emplace<ModelComponent>(entity, model);
 		reg.emplace<MaterialComponent>(entity, m_DefaultMaterial);
 
-		RefreshEntityList();
+		// 选中新实体（用 GameObject 包装）
+		m_SelectedGameObject = GameObject(entity, &activeScene->GetECS());
+		m_SelectedGameObjectName = modelNode->info.name;
+		SyncTransformEditor();
+
+		RefreshGameObjectList();
 		ITR_INFO("Created model entity: {}", modelNode->info.name);
 	}
 
 	void ImGuiLayer::ApplyTextureToSelectedEntity(std::shared_ptr<ResourceFileNode> textureNode) {
-		if (m_SelectedEntity == entt::null || !textureNode) return;
+		if (!m_SelectedGameObject.IsValid() || !textureNode) return;
 
 		auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
 		if (!activeScene) return;
-
-		auto& reg = activeScene->GetECS().GetRegistry();
 
 		// 加载纹理
 		auto texture = ResourceManager::Get().LoadTextureFromNode(textureNode);
@@ -1172,8 +1539,8 @@ namespace Intro {
 		}
 
 		// 检查实体是否有材质组件
-		if (reg.any_of<MaterialComponent>(m_SelectedEntity)) {
-			auto& materialComp = reg.get<MaterialComponent>(m_SelectedEntity);
+		if (m_SelectedGameObject.HasComponent<MaterialComponent>()) {
+			auto& materialComp = m_SelectedGameObject.GetComponent<MaterialComponent>();
 			if (materialComp.material) {
 				// 设置漫反射纹理
 				materialComp.material->SetDiffuse(texture);
@@ -1182,22 +1549,19 @@ namespace Intro {
 		}
 	}
 
-
 	void ImGuiLayer::UpdateSelectedEntityTransform()
 	{
-		if (!m_SceneManager || m_SelectedEntity == entt::null) return;
-		auto* activeScene = m_SceneManager->GetActiveScene();
-		auto& reg = activeScene->GetECS().GetRegistry();
-		if (!reg.valid(m_SelectedEntity) || !reg.any_of<TransformComponent>(m_SelectedEntity)) return;
+		if (!m_SceneManager || !m_SelectedGameObject.IsValid()) return;
+		if (!m_SelectedGameObject.HasComponent<TransformComponent>()) return;
 
-		auto& t = reg.get<TransformComponent>(m_SelectedEntity);
+		auto& t = m_SelectedGameObject.GetComponent<TransformComponent>();
 		t.transform.position = m_TransformEditor.position;
 		t.transform.rotation = m_TransformEditor.rotation;
 		t.transform.scale = m_TransformEditor.scale;
 
-		if (reg.any_of<LightComponent>(m_SelectedEntity))
+		if (m_SelectedGameObject.HasComponent<LightComponent>())
 		{
-			auto& light = reg.get<LightComponent>(m_SelectedEntity);
+			auto& light = m_SelectedGameObject.GetComponent<LightComponent>();
 			if (light.Type == LightType::Directional) {
 				glm::vec3 worldDir = t.transform.rotation * light.Direction;
 				ITR_INFO("Directional Light direction updated: ({:.2f},{:.2f},{:.2f})", worldDir.x, worldDir.y, worldDir.z);
@@ -1207,17 +1571,16 @@ namespace Intro {
 
 	void ImGuiLayer::SyncTransformEditor()
 	{
-		if (!m_SceneManager || m_SelectedEntity == entt::null) return;
-		auto* activeScene = m_SceneManager->GetActiveScene();
-		auto& reg = activeScene->GetECS().GetRegistry();
-		if (!reg.valid(m_SelectedEntity) || !reg.any_of<TransformComponent>(m_SelectedEntity)) return;
+		if (!m_SceneManager || !m_SelectedGameObject.IsValid()) return;
+		if (!m_SelectedGameObject.HasComponent<TransformComponent>()) return;
 
-		auto& t = reg.get<TransformComponent>(m_SelectedEntity);
+		auto& t = m_SelectedGameObject.GetComponent<TransformComponent>();
 		m_TransformEditor.position = t.transform.position;
 		m_TransformEditor.rotation = t.transform.rotation;
 		m_TransformEditor.scale = t.transform.scale;
 		m_EulerAngles = glm::degrees(glm::eulerAngles(t.transform.rotation));
 	}
+
 
 	// -------------------------------------------------------------------------
 	// Event dispatchers

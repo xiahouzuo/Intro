@@ -59,17 +59,75 @@ namespace Intro {
         return m_Scenes.size();
     }
 
-    void SceneManager::OnUpdate(float dt) {
-        if (auto scene = GetActiveScene()) {
-            if (scene->IsActive()) scene->OnUpdate(dt);
-        }
-    }
+
 
     size_t SceneManager::FindIndexByName(const std::string& name) const {
         for (size_t i = 0; i < m_Scenes.size(); ++i) {
             if (m_Scenes[i]->GetName() == name) return i;
         }
         return npos;
+    }
+
+    void SceneManager::SaveSceneState()
+    {
+        m_SavedTransforms.clear();
+        m_SavedRigidbodies.clear();
+
+        auto* activeScene = GetActiveScene();
+        if (!activeScene) return;
+
+        auto& ecs = activeScene->GetECS();
+        auto& registry = ecs.GetRegistry();
+
+        // 保存所有实体的变换和刚体状态
+        auto transformView = registry.view<TransformComponent>();
+        for (auto entity : transformView) {
+            m_SavedTransforms[entity] = transformView.get<TransformComponent>(entity);
+        }
+
+        auto rigidbodyView = registry.view<RigidbodyComponent>();
+        for (auto entity : rigidbodyView) {
+            m_SavedRigidbodies[entity] = rigidbodyView.get<RigidbodyComponent>(entity);
+        }
+    }
+
+    void SceneManager::RestoreSceneState()
+    {
+        auto* activeScene = GetActiveScene();
+        if (!activeScene) return;
+
+        auto& ecs = activeScene->GetECS();
+        auto& registry = ecs.GetRegistry();
+
+        // 恢复变换状态
+        for (auto& [entity, transform] : m_SavedTransforms) {
+            if (registry.valid(entity) && registry.all_of<TransformComponent>(entity)) {
+                registry.get<TransformComponent>(entity) = transform;
+            }
+        }
+
+        // 恢复刚体状态（重置速度和力）
+        for (auto& [entity, rigidbody] : m_SavedRigidbodies) {
+            if (registry.valid(entity) && registry.all_of<RigidbodyComponent>(entity)) {
+                auto& currentRb = registry.get<RigidbodyComponent>(entity);
+                currentRb.velocity = glm::vec3(0.0f);
+                currentRb.angularVelocity = glm::vec3(0.0f);
+                currentRb.force = glm::vec3(0.0f);
+                currentRb.torque = glm::vec3(0.0f);
+                // 保持其他属性不变（质量、阻力等）
+            }
+        }
+    }
+
+    void SceneManager::OnUpdate(float dt)
+    {
+        for (auto& scene : m_Scenes)
+        {
+            if (scene->IsActive())
+            {
+                scene->OnUpdate(dt, m_IsPlaying);
+            }
+        }
     }
 
 } // namespace Intro

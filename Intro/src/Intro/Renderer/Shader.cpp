@@ -147,6 +147,10 @@ namespace Intro {
 
 	int Shader::GetUniformLocation(const std::string& name) const
 	{
+		if (m_ShaderID == 0) {
+			ITR_ERROR("Attempting to get uniform location for invalid shader program: {}", name);
+			return -1;
+		}
 		return glGetUniformLocation(m_ShaderID, name.c_str());
 	}
 }

@@ -6,6 +6,7 @@
 #include "Events/ApplicationEvent.h"
 #include "LayerStack.h"
 #include "Intro/ECS/SceneManager.h"
+#include "Intro/RecourceManager/ShaderLibrary.h"
 
 
 namespace Intro {
@@ -29,7 +30,7 @@ namespace Intro {
 			ITR_CORE_ASSERT(!s_SceneManager, "SceneManager is null!");
 			return *s_SceneManager;
 		}
-		
+		inline static ShaderLibrary& GetShaderLibrary() { return *s_ShaderLibrary; }
 		
 		bool IsViewportHovered() const { return m_ViewportHovered; }
 		bool IsViewportFocused() const { return m_ViewportFocused; }
@@ -53,12 +54,15 @@ namespace Intro {
 		bool m_IsUsingGizmo = false;
 
 		std::shared_ptr<Material> defaultMaterial;
-		std::shared_ptr<Shader> defaultShader;
+
+
 
 	private:
 		static Application* s_Instance;
 
 		static SceneManager* s_SceneManager;
+
+		static ShaderLibrary* s_ShaderLibrary;
 	};
 
 	Application* CreateApplication();

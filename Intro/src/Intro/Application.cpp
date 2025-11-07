@@ -15,6 +15,7 @@ namespace Intro {
 
 	Application* Application::s_Instance = nullptr;
 	SceneManager* Application::s_SceneManager = nullptr;
+	ShaderLibrary* Application::s_ShaderLibrary = nullptr;
 
 	Application::Application() {
 		ITR_CORE_ASSERT(!s_Instance, "Application is already exists!");
@@ -28,6 +29,7 @@ namespace Intro {
 		if (!config.Load()) {
 			ITR_WARN("Failed to load config, using defaults");
 		}
+		config.Get().GetGraphicsConfig().EnableGammaCorrection = false;
 
 		// 先指定正确的 assets 根（使用绝对路径或构造出的绝对路径），再初始化 ResourceManager
 		std::string assetsPath = "E:/MyEngine/Intro/Intro/src/Intro/assets/";
@@ -65,17 +67,29 @@ namespace Intro {
 		Renderer::SetConfig(rendererConfig);
 		Renderer::Init();
 
-		
-		defaultShader = std::make_shared<Shader>(
-			"E:/MyEngine/Intro/Intro/src/Intro/assert/shaders/tempShader.vert",
-			"E:/MyEngine/Intro/Intro/src/Intro/assert/shaders/tempShader.frag"
-		);
-		defaultMaterial = std::make_shared<Material>(defaultShader);
-		//临时模型
-		std::shared_ptr<Model> model;
-		model = std::make_shared<Model>("E:/MyEngine/Intro/Intro/src/Intro/Assert/models/backpack.obj");
-		Scene& defaultScene = s_SceneManager->CreateScene<Scene>("defaultScene");
+		s_ShaderLibrary = new ShaderLibrary;
 
+		auto lineShader = std::make_shared<Shader>(
+			"E:/MyEngine/Intro/Intro/src/Intro/assets/shaders/lineShader.vert",
+			"E:/MyEngine/Intro/Intro/src/Intro/assets/shaders/lineShader.frag"
+		);
+		s_ShaderLibrary->Add("lineShader", lineShader);
+		
+		auto defaultShader = std::make_shared<Shader>(
+			"E:/MyEngine/Intro/Intro/src/Intro/assets/shaders/tempShader.vert",
+			"E:/MyEngine/Intro/Intro/src/Intro/assets/shaders/tempShader.frag"
+		);
+		s_ShaderLibrary->Add("defaultShader", defaultShader);
+
+		defaultMaterial = std::make_shared<Material>(defaultShader);
+
+		Scene& defaultScene = s_SceneManager->CreateScene<Scene>("defaultScene");
+		//临时模型
+		//std::shared_ptr<Model> model;
+		//model = std::make_shared<Model>("E:/MyEngine/Intro/Intro/src/Intro/Assert/models/backpack.obj");
+		//GameObject backpack = defaultScene.CreateGameObject("defaultModel");
+		//backpack.AddComponent<ModelComponent>(model);
+		//backpack.AddComponent<MaterialComponent>(defaultMaterial);
 
 		// 创建明确的默认方向光
 		entt::entity lightEntity = defaultScene.CreateEntity();
@@ -92,24 +106,6 @@ namespace Intro {
 		light.Intensity = 0.5f;
 		light.Direction = glm::vec3(0.0f, 0.0f, -1.0f); // 局部空间向前
 		defaultScene.GetECS().AddComponent<LightComponent>(lightEntity, light);
-
-
-		entt::entity entity = defaultScene.CreateEntity();
-		auto& transformComp = defaultScene.GetECS().AddComponent<TransformComponent>(entity,
-			glm::vec3(0.0f, 0.0f, 0.0f),  // 位置
-			glm::quat(1.0f, 0.0f, 0.0f, 0.0f),  // 旋转（单位四元数）
-			glm::vec3(1.0f, 1.0f, 1.0f)   // 缩放
-			);
-
-		auto& modelComp = defaultScene.GetECS().AddComponent<ModelComponent>(
-			entity,
-			model  // 模型资源
-		);
-
-		auto& materialComp = defaultScene.GetECS().AddComponent<MaterialComponent>(
-			entity,
-			defaultMaterial
-			);
 
 		defaultScene.SetActive(true);
 
@@ -180,5 +176,7 @@ namespace Intro {
 		m_Running = false;
 		return true;
 	}
+
+
 
 }

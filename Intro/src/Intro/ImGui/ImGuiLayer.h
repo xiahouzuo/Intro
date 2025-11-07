@@ -4,6 +4,7 @@
 #define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include "ImGuizmo.h"
+#include "Intro/Application.h"
 #include "Intro/ECS/SceneManager.h"
 #include "Intro/RecourceManager/ResourceFileTree.h"
 #include "Intro/Events/ApplicationEvent.h"
@@ -16,15 +17,11 @@
 #include <string>
 #include <memory>
 
+#include "Intro/ECS/GameObjectManager.h" 
+
 namespace Intro {
 
-	/**
-	 * ImGuiLayer 负责编辑器 UI（初始化 / 每帧绘制 / 事件转发 / 简单工具）
-	 * 设计目标：
-	 *  - 单一职责：ImGui 相关代码集中在这里
-	 *  - 清晰的帧流程：Init -> NewFrame -> Draw(...) -> Render -> Shutdown
-	 *  - 最小副作用：尽量避免直接修改外部状态，使用场景接口
-	 */
+
 	class ITR_API ImGuiLayer : public Layer
 	{
 	public:
@@ -37,7 +34,6 @@ namespace Intro {
 		void OnUpdate(float deltaTime) override;
 		void OnEvent(Event& event) override;
 
-		// 可在运行时注入渲染层（若构造时没有）
 		void SetRendererLayer(RendererLayer* layer) { m_RendererLayer = layer; }
 
 	private:
@@ -51,7 +47,7 @@ namespace Intro {
 		void DrawMenuBar();
 		void DrawDockSpaceHost();
 		void DrawViewport();
-		void ShowEntityManagerWindow();
+		void ShowGameObjectManagerWindow();
 		void ShowEntityInspectorWindow();
 		void ShowSceneControlsWindow();
 		void ShowImportModelWindow();
@@ -59,7 +55,7 @@ namespace Intro {
 		void HandleRenamePopup();
 
 		// Utilities
-		void RefreshEntityList();
+		void RefreshGameObjectList();
 		bool ImportModel(const std::string& path);
 		void CreatePrimitive(ShapeType type);
 		void CreateLight(LightType type);
@@ -101,9 +97,9 @@ namespace Intro {
 		bool m_ViewportFocused = false;
 
 		// selection / entities
-		entt::entity m_SelectedEntity = entt::null;
-		std::string  m_SelectedEntityName;
-		std::vector<entt::entity> m_CachedEntities;
+		GameObject m_SelectedGameObject; // 选中 GameObject（初始为无效对象）
+		std::string m_SelectedGameObjectName;
+		std::vector<GameObject> m_CachedGameObjects;
 
 		// transform editor (temp copy while editing)
 		Transform m_TransformEditor;
@@ -117,7 +113,7 @@ namespace Intro {
 
 		// rename modal state
 		bool m_IsEditingTag = false;
-		entt::entity m_EditingEntity = entt::null;
+		GameObject m_EditingGameObject = GameObject(); 
 		char m_TagEditBuffer[256] = { 0 };
 		bool m_ShouldOpenRenamePopup = false;
 		bool m_RenamePopupNeedsFocus = false;
@@ -126,11 +122,10 @@ namespace Intro {
 		std::string m_ModelImportPath;
 		bool m_ShowImportWindow = false;
 
-		bool m_ShowResourceBrowser = true;
 
 		// optional default material/shader (可注入)
 		std::shared_ptr<Material> m_DefaultMaterial;
-		std::shared_ptr<Shader> m_DefaultShader;
+		std::shared_ptr<Shader> m_DefaultShader = Application::GetShaderLibrary().Get("UnnamedShader");
 
 		// Resource browser state
 		std::string m_ResourceSearch = "";
@@ -140,6 +135,14 @@ namespace Intro {
 		bool m_ShowHiddenFiles = false;
 		int m_SortMode = 0; // 0=name, 1=time, 2=type
 		float m_ResourcePaneWidth = 320.0f; // 左边树宽度
+
+		bool m_ShowPlayControls = true;
+
+		bool m_ShowResourceBrowser = false;
+		bool m_ShowGameObjectManager = true; // 默认显示
+		bool m_ShowEntityInspector = true; // 默认显示
+		bool m_ShowSceneControls = true; // 默认显示
+		bool m_ShowRendererSettings = false; // 默认不显示
 	};
 
 } // namespace Intro

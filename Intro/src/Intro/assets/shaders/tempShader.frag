@@ -47,6 +47,10 @@ uniform sampler2D material_specular;
 uniform float material_shininess;
 uniform vec3 u_AmbientColor;
 
+vec3 gammaCorrect(vec3 color) {
+    return pow(color, vec3(1.0/2.2));
+}
+
 // 点光源衰减函数
 float CalculateAttenuation(float distance, float range) {
     float attenuation = 1.0 / (1.0 + 0.09 * distance + 0.032 * distance * distance);
@@ -123,5 +127,8 @@ void main() {
     }
 
     result = clamp(result, 0.0, 1.0);
+
+    result = gammaCorrect(result);
+
     FragColor = vec4(result, 1.0);
 }

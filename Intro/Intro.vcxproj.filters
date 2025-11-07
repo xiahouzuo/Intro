@@ -105,13 +105,13 @@
     <ClInclude Include="src\Intro\MouseButtonCodes.h">
       <Filter>src\Intro</Filter>
     </ClInclude>
-    <ClInclude Include="src\Intro\Renderer\Camears\Camera.h">
+    <ClInclude Include="src\Intro\Renderer\Cameras\Camera.h">
       <Filter>src\Intro\Renderer\Camears</Filter>
     </ClInclude>
-    <ClInclude Include="src\Intro\Renderer\Camears\FreeCamera.h">
+    <ClInclude Include="src\Intro\Renderer\Cameras\FreeCamera.h">
       <Filter>src\Intro\Renderer\Camears</Filter>
     </ClInclude>
-    <ClInclude Include="src\Intro\Renderer\Camears\OrbitCamera.h">
+    <ClInclude Include="src\Intro\Renderer\Cameras\OrbitCamera.h">
       <Filter>src\Intro\Renderer\Camears</Filter>
     </ClInclude>
     <ClInclude Include="src\Intro\Renderer\Mesh.h">
@@ -170,6 +170,10 @@
     <ClInclude Include="src\Intro\Config\ConfigObserver.h" />
     <ClInclude Include="src\Intro\RecourceManager\ResourceManager.h" />
     <ClInclude Include="src\Intro\RecourceManager\ResourceFileTree.h" />
+    <ClInclude Include="src\Intro\ECS\GameObject.h" />
+    <ClInclude Include="src\Intro\ECS\GameObjectManager.h" />
+    <ClInclude Include="src\Intro\Physics\PhysicsSystem.h" />
+    <ClInclude Include="src\Intro\Renderer\Cameras\Frustum.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Intro\Application.cpp">
@@ -190,10 +194,10 @@
     <ClCompile Include="src\Intro\Log.cpp">
       <Filter>src\Intro</Filter>
     </ClCompile>
-    <ClCompile Include="src\Intro\Renderer\Camears\FreeCamera.cpp">
+    <ClCompile Include="src\Intro\Renderer\Cameras\FreeCamera.cpp">
       <Filter>src\Intro\Renderer\Camears</Filter>
     </ClCompile>
-    <ClCompile Include="src\Intro\Renderer\Camears\OrbitCamera.cpp">
+    <ClCompile Include="src\Intro\Renderer\Cameras\OrbitCamera.cpp">
       <Filter>src\Intro\Renderer\Camears</Filter>
     </ClCompile>
     <ClCompile Include="src\Intro\Renderer\Mesh.cpp">
@@ -240,5 +244,10 @@
     <ClCompile Include="src\Intro\RecourceManager\ShaderLibrary.cpp" />
     <ClCompile Include="src\Intro\Renderer\RenderPass.cpp" />
     <ClCompile Include="src\Intro\RecourceManager\ResourceManager.cpp" />
+    <ClCompile Include="src\Intro\ECS\GameObject.cpp" />
+    <ClCompile Include="src\Intro\ECS\GameObjectManager.cpp" />
+    <ClCompile Include="src\Intro\Physics\PhysicsSystem.cpp" />
+    <ClCompile Include="src\Intro\ECS\Scene.cpp" />
+    <ClCompile Include="src\Intro\Renderer\Cameras\Frustum.cpp" />
   </ItemGroup>
 </Project>

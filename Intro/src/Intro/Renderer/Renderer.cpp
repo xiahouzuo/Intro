@@ -10,6 +10,8 @@
 
 namespace Intro {
 
+    static bool s_MainFramebufferBoundByRenderer = false;
+
     // 静态成员定义（初始化）
     std::vector<Renderer::BatchData> Renderer::s_BatchQueue;
     Renderer::Statistics Renderer::s_Stats;
@@ -59,11 +61,6 @@ namespace Intro {
         glCullFace(GL_BACK);
         glFrontFace(GL_CCW);
 
-        if (s_Config.enableGammaCorrection) {
-            // 启用 sRGB 帧缓冲的写入（如果使用线性->sRGB 修正）
-            glEnable(GL_FRAMEBUFFER_SRGB);
-        }
-
         s_Initialized = true;
         ITR_INFO("Renderer initialized successfully");
     }
@@ -85,15 +82,28 @@ namespace Intro {
     void Renderer::BeginFrame() {
         ResetStats();
 
-        // 绑定主帧缓冲，后面对所有渲染提交都写入这个 FBO（除非 BeginRenderPass 改变）
-        if (s_MainFramebuffer)
-            s_MainFramebuffer->Bind();
+        // 检查当前绑定的帧缓冲
+        GLint currentlyBound = 0;
+        glGetIntegerv(GL_FRAMEBUFFER_BINDING, &currentlyBound);
 
-        glViewport(0, 0, s_Config.viewportWidth, s_Config.viewportHeight);
+        // 只有当当前没有绑定任何 FBO（即绑定到默认帧缓冲）时，由 Renderer 绑定并管理 s_MainFramebuffer
+        s_MainFramebufferBoundByRenderer = false;
+        if (currentlyBound == 0) {
+            if (s_MainFramebuffer)
+                s_MainFramebuffer->Bind();
+            glViewport(0, 0, s_Config.viewportWidth, s_Config.viewportHeight);
 
-        // 默认清屏颜色，可改成来自 RenderPass 的 clearColor
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            // 由 Renderer 清除当前（此时是主 FBO 或默认 FBO）
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            s_MainFramebufferBoundByRenderer = true;
+        }
+        else {
+            // 已经有外部 FBO 被绑定（例如 RendererLayer::BindRenderState）
+            // 不去绑定/覆盖它，但仍然清除当前绑定的缓冲（通常外部 Bind 已设置合适 viewport）
+            glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        }
     }
 
     // EndFrame: 每帧结束时调用
@@ -103,13 +113,11 @@ namespace Intro {
     void Renderer::EndFrame() {
         // 执行批量绘制
         FlushBatch();
-
-        // 后期处理占位（如果用户调用 PostProcess 会使用 post process FBO）
-        // 例如：Renderer::PostProcess(postProcessShader);
-
-        // 解绑主帧缓冲（回到默认帧缓冲）
-        if (s_MainFramebuffer)
+        // 解绑主帧缓冲，但仅当本帧是由 Renderer 绑定时才解绑
+        if (s_MainFramebuffer && s_MainFramebufferBoundByRenderer) {
             s_MainFramebuffer->Unbind();
+        }
+
     }
 
     // BeginRenderPass: 用 RenderPass 对象来切换渲染目标与清屏逻辑

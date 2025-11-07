@@ -100,4 +100,24 @@ namespace Intro {
         // m_WorldUp 保持不变
     }
 
+    void FreeCamera::SetPerspective(float radins, float aspectRatio, float nearClip, float farClip)
+    {
+        this->Fov = radins;
+        this->AspectRatio = aspectRatio;
+        this->FarClip = farClip;
+        this->NearClip = nearClip;
+    }
+
+    glm::quat FreeCamera::GetRotation() const
+    {
+        // 获取视图矩阵，其旋转部分是相机旋转的逆（正交矩阵）
+        glm::mat4 viewMatrix = GetViewMat();
+        // 提取视图矩阵的旋转部分（3x3矩阵）
+        glm::mat3 rotationMatrix = glm::mat3(viewMatrix);
+        // 正交矩阵的逆等于转置，转置后得到相机实际的旋转矩阵
+        rotationMatrix = glm::transpose(rotationMatrix);
+        // 将旋转矩阵转换为四元数
+        return glm::quat(rotationMatrix);
+    }
+
 } // namespace Intro

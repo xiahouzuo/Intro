@@ -281,8 +281,8 @@ namespace Intro {
 
     void ResourceManager::CreateDefaultResources() {
         m_DefaultShader = LoadShader("default",
-            "E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/tempShader.vert",
-            "E:/MyEngine/Intro/Intro/src/Intro/Assert/Shaders/tempShader.frag");
+            "E:/MyEngine/Intro/Intro/src/Intro/assets/shaders/tempShader.vert",
+            "E:/MyEngine/Intro/Intro/src/Intro/assets/shaders/tempShader.frag");
 
         if (m_DefaultShader) {
             m_DefaultMaterial = CreateMaterial("default", m_DefaultShader);
