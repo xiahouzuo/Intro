@@ -70,6 +70,9 @@ namespace Intro {
 		void CreateModelEntity(std::shared_ptr<ResourceFileNode> modelNode);
 		void ApplyTextureToSelectedEntity(std::shared_ptr<ResourceFileNode> textureNode);
 
+		void PopulateAvailableComponents();
+		void ShowAddComponentPopup();
+		void AddComponentToSelected(const std::string& componentName);
 
 		// Event handlers (原样保留，封装 ImGui IO 状态)
 		bool OnMouseButtonPressedEvent(MouseButtonPressedEvent& e);
@@ -144,6 +147,10 @@ namespace Intro {
 		bool m_ShowSceneControls = true; // 默认显示
 		bool m_ShowRendererSettings = false; // 默认不显示
 		bool m_ShowSkyboxSettings = false;
+
+		bool m_ShowAddComponentPopup = false;
+		std::vector<std::string> m_AvailableComponents;
+		std::string m_ComponentFilter;
 	};
 
 } // namespace Intro

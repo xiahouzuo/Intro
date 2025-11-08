@@ -633,8 +633,122 @@ namespace Intro {
 			}
 		}
 
+		// --- Mesh Component ---
+		if (m_SelectedGameObject.HasComponent<MeshComponent>())
+		{
+			if (ImGui::CollapsingHeader("Mesh", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				auto& meshComp = m_SelectedGameObject.GetComponent<MeshComponent>();
+				ImGui::Text("Mesh: %s", meshComp.mesh ? "Loaded" : "None");
+
+				if (ImGui::Button("Remove Mesh Component")) {
+					m_SelectedGameObject.RemoveComponent<MeshComponent>();
+				}
+			}
+		}
+
+		// --- Model Component ---
+		if (m_SelectedGameObject.HasComponent<ModelComponent>())
+		{
+			if (ImGui::CollapsingHeader("Model", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				auto& modelComp = m_SelectedGameObject.GetComponent<ModelComponent>();
+				ImGui::Text("Model: %s", modelComp.model ? "Loaded" : "None");
+
+				if (ImGui::Button("Remove Model Component")) {
+					m_SelectedGameObject.RemoveComponent<ModelComponent>();
+				}
+			}
+		}
+
+		// --- Material Component ---
+		if (m_SelectedGameObject.HasComponent<MaterialComponent>())
+		{
+			if (ImGui::CollapsingHeader("Material", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				auto& materialComp = m_SelectedGameObject.GetComponent<MaterialComponent>();
+				ImGui::Text("Material: %s", materialComp.material ? "Loaded" : "None");
+				ImGui::Checkbox("Transparent", &materialComp.Transparent);
+
+				if (ImGui::Button("Remove Material Component")) {
+					m_SelectedGameObject.RemoveComponent<MaterialComponent>();
+				}
+			}
+		}
+
+		// --- Rigidbody Component ---
+		if (m_SelectedGameObject.HasComponent<RigidbodyComponent>())
+		{
+			if (ImGui::CollapsingHeader("Rigidbody", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				auto& rb = m_SelectedGameObject.GetComponent<RigidbodyComponent>();
+
+				ImGui::DragFloat("Mass", &rb.mass, 0.1f, 0.0f, 1000.0f);
+				ImGui::DragFloat3("Velocity", &rb.velocity.x, 0.1f);
+				ImGui::DragFloat3("Angular Velocity", &rb.angularVelocity.x, 0.1f);
+				ImGui::DragFloat("Drag", &rb.drag, 0.01f, 0.0f, 10.0f);
+				ImGui::DragFloat("Angular Drag", &rb.angularDrag, 0.01f, 0.0f, 10.0f);
+				ImGui::Checkbox("Use Gravity", &rb.useGravity);
+				ImGui::Checkbox("Is Kinematic", &rb.isKinematic);
+				ImGui::Checkbox("Freeze Rotation", &rb.freezeRotation);
+
+				if (ImGui::Button("Remove Rigidbody Component")) {
+					m_SelectedGameObject.RemoveComponent<RigidbodyComponent>();
+				}
+			}
+		}
+
+		// --- Collider Component ---
+		if (m_SelectedGameObject.HasComponent<ColliderComponent>())
+		{
+			if (ImGui::CollapsingHeader("Collider", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				auto& collider = m_SelectedGameObject.GetComponent<ColliderComponent>();
+
+				const char* colliderTypes[] = { "None", "Box", "Sphere", "Capsule", "Mesh" };
+				int currentType = (int)collider.type;
+				if (ImGui::Combo("Type", &currentType, colliderTypes, 5)) {
+					collider.type = (ColliderType)currentType;
+				}
+
+				if (collider.type == ColliderType::Box) {
+					ImGui::DragFloat3("Size", &collider.size.x, 0.1f, 0.0f, 100.0f);
+				}
+				else if (collider.type == ColliderType::Sphere) {
+					ImGui::DragFloat("Radius", &collider.radius, 0.1f, 0.0f, 100.0f);
+				}
+				else if (collider.type == ColliderType::Capsule) {
+					ImGui::DragFloat("Radius", &collider.radius, 0.1f, 0.0f, 100.0f);
+					ImGui::DragFloat("Height", &collider.height, 0.1f, 0.0f, 100.0f);
+				}
+
+				ImGui::DragFloat3("Offset", &collider.offset.x, 0.1f);
+				ImGui::Checkbox("Is Trigger", &collider.isTrigger);
+				ImGui::Checkbox("Enabled", &collider.enabled);
+				ImGui::DragFloat("Bounciness", &collider.bounciness, 0.01f, 0.0f, 1.0f);
+				ImGui::DragFloat("Static Friction", &collider.staticFriction, 0.01f, 0.0f, 1.0f);
+				ImGui::DragFloat("Dynamic Friction", &collider.dynamicFriction, 0.01f, 0.0f, 1.0f);
+
+				if (ImGui::Button("Remove Collider Component")) {
+					m_SelectedGameObject.RemoveComponent<ColliderComponent>();
+				}
+			}
+		}
+
+		ImGui::Separator();
+		ImGui::Spacing();
+
+		if (ImGui::Button("Add Component", ImVec2(-1, 0))) {
+			m_ShowAddComponentPopup = true;
+			m_ComponentFilter.clear();
+			PopulateAvailableComponents();
+		}
+
+
 		// End disabled scope (必须配对)
 		ImGui::EndDisabled();
+
+		ShowAddComponentPopup();
 
 		ImGui::End();
 	}
@@ -1565,6 +1679,157 @@ namespace Intro {
 		m_EulerAngles = glm::degrees(glm::eulerAngles(t.transform.rotation));
 	}
 
+	void ImGuiLayer::PopulateAvailableComponents()
+	{
+		m_AvailableComponents.clear();
+
+		// 列出所有可添加的组件类型
+		std::vector<std::string> allComponents = {
+			"Mesh", "Model", "Light", "Camera", "Material",
+			"Rigidbody", "Collider"
+		};
+
+		// 过滤掉已经存在的组件
+		for (const auto& compName : allComponents) {
+			bool shouldAdd = true;
+
+			if (compName == "Mesh" && m_SelectedGameObject.HasComponent<MeshComponent>())
+				shouldAdd = false;
+			else if (compName == "Model" && m_SelectedGameObject.HasComponent<ModelComponent>())
+				shouldAdd = false;
+			else if (compName == "Light" && m_SelectedGameObject.HasComponent<LightComponent>())
+				shouldAdd = false;
+			else if (compName == "Camera" && m_SelectedGameObject.HasComponent<CameraComponent>())
+				shouldAdd = false;
+			else if (compName == "Material" && m_SelectedGameObject.HasComponent<MaterialComponent>())
+				shouldAdd = false;
+			else if (compName == "Rigidbody" && m_SelectedGameObject.HasComponent<RigidbodyComponent>())
+				shouldAdd = false;
+			else if (compName == "Collider" && m_SelectedGameObject.HasComponent<ColliderComponent>())
+				shouldAdd = false;
+
+			if (shouldAdd) {
+				m_AvailableComponents.push_back(compName);
+			}
+		}
+	}
+
+	void ImGuiLayer::ShowAddComponentPopup()
+	{
+		if (m_ShowAddComponentPopup) {
+			ImGui::OpenPopup("Add Component");
+			m_ShowAddComponentPopup = false;
+		}
+
+		// 使用 NoTitleBar 标志，然后我们自己绘制标题栏和关闭按钮
+		if (ImGui::BeginPopupModal("Add Component", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar))
+		{
+			// 自定义标题栏
+			ImGui::BeginChild("TitleBar", ImVec2(0, 30), false);
+			{
+				ImGui::Columns(2);
+
+				// 标题
+				ImGui::SetColumnWidth(0, ImGui::GetWindowWidth() - 40);
+				ImGui::Text("Add Component");
+
+				// 关闭按钮
+				ImGui::NextColumn();
+				if (ImGui::Button("X", ImVec2(20, 20))) {
+					ImGui::CloseCurrentPopup();
+				}
+				if (ImGui::IsItemHovered()) {
+					ImGui::SetTooltip("Close");
+				}
+
+				ImGui::Columns(1);
+			}
+			ImGui::EndChild();
+
+			ImGui::Separator();
+
+			ImGui::Text("Select component to add:");
+			ImGui::Separator();
+
+			// 搜索过滤
+			ImGui::Text("Search:");
+			ImGui::SameLine();
+			ImGui::SetNextItemWidth(250.0f);
+			ImGui::InputText("##ComponentFilter", &m_ComponentFilter);
+
+			ImGui::Spacing();
+			ImGui::BeginChild("ComponentList", ImVec2(350, 200), true);
+
+			if (m_AvailableComponents.empty()) {
+				ImGui::Text("All components already added");
+			}
+			else {
+				for (const auto& compName : m_AvailableComponents) {
+					// 应用过滤
+					if (!m_ComponentFilter.empty()) {
+						std::string lowerName = compName;
+						std::transform(lowerName.begin(), lowerName.end(), lowerName.begin(), ::tolower);
+						std::string lowerFilter = m_ComponentFilter;
+						std::transform(lowerFilter.begin(), lowerFilter.end(), lowerFilter.begin(), ::tolower);
+
+						if (lowerName.find(lowerFilter) == std::string::npos) {
+							continue;
+						}
+					}
+
+					if (ImGui::Selectable(compName.c_str())) {
+						AddComponentToSelected(compName);
+						ImGui::CloseCurrentPopup();
+					}
+				}
+			}
+
+			ImGui::EndChild();
+
+			ImGui::Spacing();
+			if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+				ImGui::CloseCurrentPopup();
+			}
+
+			ImGui::EndPopup();
+		}
+	}
+
+	void ImGuiLayer::AddComponentToSelected(const std::string& componentName)
+	{
+		if (!m_SelectedGameObject.IsValid()) return;
+
+		if (componentName == "Mesh") {
+			m_SelectedGameObject.AddComponent<MeshComponent>();
+			ITR_INFO("Added MeshComponent to {}", m_SelectedGameObjectName);
+		}
+		else if (componentName == "Model") {
+			m_SelectedGameObject.AddComponent<ModelComponent>();
+			ITR_INFO("Added ModelComponent to {}", m_SelectedGameObjectName);
+		}
+		else if (componentName == "Light") {
+			m_SelectedGameObject.AddComponent<LightComponent>();
+			ITR_INFO("Added LightComponent to {}", m_SelectedGameObjectName);
+		}
+		else if (componentName == "Camera") {
+			m_SelectedGameObject.AddComponent<CameraComponent>();
+			ITR_INFO("Added CameraComponent to {}", m_SelectedGameObjectName);
+		}
+		else if (componentName == "Material") {
+			auto defaultShader = Application::Get().GetShaderLibrary().Get("defaultShader");
+			auto material = std::make_shared<Material>(defaultShader);
+			m_SelectedGameObject.AddComponent<MaterialComponent>(material);
+			ITR_INFO("Added MaterialComponent to {}", m_SelectedGameObjectName);
+		}
+		else if (componentName == "Rigidbody") {
+			m_SelectedGameObject.AddComponent<RigidbodyComponent>();
+			ITR_INFO("Added RigidbodyComponent to {}", m_SelectedGameObjectName);
+		}
+		else if (componentName == "Collider") {
+			m_SelectedGameObject.AddComponent<ColliderComponent>();
+			ITR_INFO("Added ColliderComponent to {}", m_SelectedGameObjectName);
+		}
+	}
 
 	// -------------------------------------------------------------------------
 	// Event dispatchers
