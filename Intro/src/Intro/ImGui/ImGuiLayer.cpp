@@ -207,39 +207,6 @@ namespace Intro {
 	{
 		if (!ImGui::BeginMainMenuBar()) return;
 
-		//if (m_SceneManager) {
-		//	ImGui::SetCursorPosX(10.0f);
-
-		//	if (m_SceneManager->IsPlaying()) {
-		//		// 运行状态 - 显示停止按钮
-		//		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.8f, 0.2f, 0.2f, 1.0f));
-		//		if (ImGui::Button("Stop", ImVec2(60, 0))) {
-		//			m_SceneManager->StopRuntime();
-		//		}
-		//		ImGui::PopStyleColor();
-
-		//		// 显示运行状态指示器
-		//		ImGui::SameLine();
-		//		ImGui::TextColored(ImVec4(0.0f, 1.0f, 0.0f, 1.0f), "PLAYING");
-		//	}
-		//	else {
-		//		// 编辑状态 - 显示播放按钮
-		//		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.8f, 0.2f, 1.0f));
-		//		if (ImGui::Button("Play", ImVec2(60, 0))) {
-		//			m_SceneManager->StartRuntime();
-		//		}
-		//		ImGui::PopStyleColor();
-
-		//		// 显示编辑状态指示器
-		//		ImGui::SameLine();
-		//		ImGui::TextColored(ImVec4(1.0f, 1.0f, 0.0f, 1.0f), "EDITING");
-		//	}
-
-		//	ImGui::SameLine();
-		//	ImGui::SetCursorPosX(150.0f);
-		//}
-
-
 		if (ImGui::BeginMenu("File"))
 		{
 			if (ImGui::MenuItem("Import Model...")) m_ShowImportWindow = true;
@@ -253,6 +220,8 @@ namespace Intro {
 			ImGui::EndMenu();
 		}
 		if (ImGui::BeginMenu("View")) {
+			if (ImGui::MenuItem("Renderer Setting")) m_ShowRendererSettings = true;
+			ImGui::MenuItem("Skybox Settings", nullptr, &m_ShowSkyboxSettings);
 			ImGui::EndMenu();
 		}
 
@@ -1198,6 +1167,21 @@ namespace Intro {
 		if (configChanged) {
 			config.MarkDirty(true);
 			ConfigObserver::Get().OnGraphicsConfigChanged(graphicsConfig);
+		}
+
+		if (ImGui::CollapsingHeader("Skybox Settings")) {
+			if (m_RendererLayer) {
+				// 这里需要通过RendererLayer暴露天空盒控制方法
+				// 临时方案：直接控制
+				static bool enableSkybox = true;
+				if (ImGui::Checkbox("Enable Skybox", &enableSkybox)) {
+					// 需要为RendererLayer添加SetEnableSkybox方法
+				}
+
+				if (ImGui::Button("Reload Skybox")) {
+					// 重新加载天空盒
+				}
+			}
 		}
 
 		ImGui::End();

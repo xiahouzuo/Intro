@@ -18,9 +18,13 @@ namespace Intro {
         virtual glm::mat4 GetViewMat() const = 0;
         virtual glm::vec3 GetPosition() const = 0;
         virtual glm::quat GetRotation() const = 0;
+        // Fov 在 Camera 内部以 弧度 (radians) 存储，因此直接使用 Fov（不要再调用 glm::radians）
         virtual glm::mat4 GetProjectionMat() const {
-            return glm::perspective(glm::radians(Fov), AspectRatio, NearClip, FarClip);
+            return glm::perspective(Fov, AspectRatio, NearClip, FarClip);
         }
+        virtual float GetFov() { return Fov; }
+        virtual float GetNearClip() { return NearClip; }
+        virtual float GetFarClip() { return FarClip; }
         virtual glm::vec3 GetFront() const = 0;
         virtual void SetPosition(glm::vec3 position) = 0;
         virtual void SetRotation(glm::quat rotation) = 0;
@@ -31,6 +35,7 @@ namespace Intro {
         // 常用设置
         float GetAspectRatio() { return AspectRatio; }
 
+        // 注意：SetFov 直接设置内部 Fov（单位为 弧度）
         void SetFov(float f) { Fov = f; }
 
         void SetAspectRatio(float ar) {
@@ -56,7 +61,8 @@ namespace Intro {
         float AspectRatio = 16.0f / 9.0f;
     protected:
         // 通用参数
-        float Fov = 45.0f;
+        // 存储单位：弧度（radians）
+        float Fov = glm::radians(45.0f);
         float NearClip = 0.1f;
         float FarClip = 1000.0f;
     };

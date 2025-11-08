@@ -143,6 +143,7 @@ namespace Intro {
 		bool m_ShowEntityInspector = true; // 默认显示
 		bool m_ShowSceneControls = true; // 默认显示
 		bool m_ShowRendererSettings = false; // 默认不显示
+		bool m_ShowSkyboxSettings = false;
 	};
 
 } // namespace Intro

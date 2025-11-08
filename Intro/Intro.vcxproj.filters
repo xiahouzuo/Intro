@@ -174,6 +174,7 @@
     <ClInclude Include="src\Intro\ECS\GameObjectManager.h" />
     <ClInclude Include="src\Intro\Physics\PhysicsSystem.h" />
     <ClInclude Include="src\Intro\Renderer\Cameras\Frustum.h" />
+    <ClInclude Include="src\Intro\Renderer\Skybox.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Intro\Application.cpp">
@@ -249,5 +250,6 @@
     <ClCompile Include="src\Intro\Physics\PhysicsSystem.cpp" />
     <ClCompile Include="src\Intro\ECS\Scene.cpp" />
     <ClCompile Include="src\Intro\Renderer\Cameras\Frustum.cpp" />
+    <ClCompile Include="src\Intro\Renderer\Skybox.cpp" />
   </ItemGroup>
 </Project>

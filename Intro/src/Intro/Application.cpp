@@ -110,6 +110,8 @@ namespace Intro {
 		defaultScene.SetActive(true);
 
 		s_SceneManager->SetActiveSceneByName("defaultScene");
+
+		PhysicsSystem::Initialize({ glm::vec3(0.0f, -9.81f, 0.0f), 1.0f / 60.0f, 10 });
 	}
 
 	Application::~Application() {

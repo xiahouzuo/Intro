@@ -8,7 +8,8 @@
 #include "UniformBuffers.h"
 #include "Shader.h"
 #include "Mesh.h"
-#include "Intro/Renderer/Model.h"
+#include "Model.h"
+#include "Skybox.h"
 #include "ShapeGenerator.h"
 #include "Intro/ECS/System.h"
 #include "Intro/ECS/GameObject.h"
@@ -52,6 +53,12 @@ namespace Intro {
         bool GetShowColliders() const { return m_ShowColliders; }
         void SetShowColliders(bool show) { m_ShowColliders = show; }
         void RenderColliderWireframes();
+
+        void SetEnableSkybox(bool enable) { m_EnableSkybox = enable; }
+        bool IsSkyboxEnabled() const { return m_EnableSkybox; }
+        void ReloadSkybox(const std::vector<std::string>& facePaths = {});
+        void RenderSkybox();
+
     private:
         bool OnWindowResized(WindowResizeEvent& e);
 
@@ -100,14 +107,19 @@ namespace Intro {
 
         std::shared_ptr<Material> m_DefaultMaterial;
 
+        //视锥
         Frustum m_EditorFrustum;
         Frustum m_GameFrustum;
         bool m_ShowFrustum = true;
 
-
+        //物理
         std::vector<glm::vec3> m_ColliderLines;
         GLuint m_ColliderVAO = 0;
         GLuint m_ColliderVBO = 0;
         bool m_ShowColliders = true; // 控制是否显示碰撞体线框
+
+        //skybox
+        std::unique_ptr<Skybox> m_Skybox;
+        bool m_EnableSkybox = true;
     };
 }

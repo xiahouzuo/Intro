@@ -19,7 +19,14 @@ namespace Intro {
 
     glm::mat4 FreeCamera::GetViewMat() const
     {
-        return glm::lookAt(Position, Position + m_Front, m_WorldUp);
+        glm::vec3 target = Position + m_Front;
+        glm::mat4 view = glm::lookAt(Position, target, m_WorldUp);
+
+        // µ÷ÊÔÐÅÏ¢
+        ITR_INFO("Camera View Matrix - Pos: ({:.2f}, {:.2f}, {:.2f}), Front: ({:.2f}, {:.2f}, {:.2f})",
+            Position.x, Position.y, Position.z, m_Front.x, m_Front.y, m_Front.z);
+
+        return view;
     }
     glm::vec3 FreeCamera::GetFront() const
     {

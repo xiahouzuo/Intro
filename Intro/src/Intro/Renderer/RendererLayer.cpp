@@ -84,130 +84,183 @@ namespace Intro {
         glEnableVertexAttribArray(0);
 
         glBindVertexArray(0);
-    }
 
-    void RendererLayer::OnUpdate(float deltaTime) {
-        // 检查 OpenGL 错误
-        GLenum error = glGetError();
-        if (error != GL_NO_ERROR) {
-            ITR_ERROR("OpenGL error before rendering: 0x%x", error);
-        }
+        try {
+            std::vector<std::string> skyboxFaces = {
+                "E:/MyEngine/Intro/Intro/src/Intro/assets/skybox/right.jpg",
+                "E:/MyEngine/Intro/Intro/src/Intro/assets/skybox/left.jpg",
+                "E:/MyEngine/Intro/Intro/src/Intro/assets/skybox/top.jpg",
+                "E:/MyEngine/Intro/Intro/src/Intro/assets/skybox/bottom.jpg",
+                "E:/MyEngine/Intro/Intro/src/Intro/assets/skybox/front.jpg",
+                "E:/MyEngine/Intro/Intro/src/Intro/assets/skybox/back.jpg"
+            };
 
-        // 更新时间和相机
-        m_Time += deltaTime;
-
-        if (m_UseEditorCamera) {
-            m_EditorCamera.OnUpdate(deltaTime);
-        }
-        else {
-            SyncGameCameraFromScene();
-        }
-
-        // 获取活动场景
-        auto& sceneMgr = Application::GetSceneManager();
-        auto* activeScene = sceneMgr.GetActiveScene();
-        if (!activeScene) {
-            ITR_ERROR("No active Scene");
-            return;
-        }
-        auto& ecs = activeScene->GetECS();
-
-        // 更新视锥体（用于调试显示）
-        glm::mat4 editorViewProjection = m_EditorCamera.GetProjectionMat() * m_EditorCamera.GetViewMat();
-        m_EditorFrustum.UpdateFromMatrix(editorViewProjection);
-
-        Camera* gameCam = GetMainCameraFromScene();
-        if (gameCam) {
-            glm::mat4 gameViewProjection = gameCam->GetProjectionMat() * gameCam->GetViewMat();
-            m_GameFrustum.UpdateFromMatrix(gameViewProjection);
-        }
-
-        // 获取活动相机
-        Camera& activeCam = GetActiveCamera();
-
-        // 调试信息
-        ITR_INFO("=== RendererLayer Update ===");
-        ITR_INFO("Using {} camera", m_UseEditorCamera ? "Editor" : "Game");
-        ITR_INFO("Camera Position: ({}, {}, {})",
-            activeCam.GetPosition().x, activeCam.GetPosition().y, activeCam.GetPosition().z);
-
-        // 更新碰撞体线框数据
-        if (m_ShowColliders) {
-            PhysicsSystem::DebugDrawColliders(ecs, m_ColliderLines);
-
-            if (!m_ColliderLines.empty()) {
-                glBindBuffer(GL_ARRAY_BUFFER, m_ColliderVBO);
-                glBufferData(GL_ARRAY_BUFFER,
-                    m_ColliderLines.size() * sizeof(glm::vec3),
-                    m_ColliderLines.data(), GL_DYNAMIC_DRAW);
-                glBindBuffer(GL_ARRAY_BUFFER, 0);
-            }
-        }
-
-        // ==================== 更新 UBO ====================
-        m_CameraUBO->OnUpdate(activeCam, m_Time);
-        m_LightsUBO->OnUpdate(ecs);
-
-        // ==================== 收集渲染项 ====================
-        m_RenderQueue.Clear();
-        RenderSystem::CollectRenderables(ecs, m_RenderQueue, activeCam.GetPosition());
-        m_RenderQueue.Sort(activeCam.GetPosition());
-
-        ITR_INFO("Render Queue - Opaque: {}, Transparent: {}",
-            m_RenderQueue.opaque.size(), m_RenderQueue.transparent.size());
-
-        BindRenderState();
-
-        // ==================== 开始渲染帧 ====================
-        Renderer::BeginFrame();
-
-        // ==================== 渲染不透明物体 ====================
-        RenderOpaqueObjects();
-
-        // ==================== 渲染透明物体 ====================
-        RenderTransparentObjects();
-
-        // ==================== 渲染碰撞体线框 ====================
-        if (m_ShowColliders && !m_ColliderLines.empty()) {
-            RenderColliderWireframes();
-        }
-
-        // ==================== 渲染视锥体 ====================
-        if (m_ShowFrustum) {
-            // 保存状态
-            GLboolean prevDepthTest = glIsEnabled(GL_DEPTH_TEST);
-            GLboolean prevBlend = glIsEnabled(GL_BLEND);
-
-            // 设置视锥体渲染状态
-            glDisable(GL_DEPTH_TEST);
-            glEnable(GL_BLEND);
-            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
-            if (m_UseEditorCamera) {
-                // 编辑器模式：显示游戏相机的视锥体（绿色）
-                if (gameCam) {
-                    RenderFrustum(m_GameFrustum, glm::vec3(0.0f, 1.0f, 0.0f));
+            // 检查天空盒文件是否存在
+            bool allFilesExist = true;
+            for (const auto& face : skyboxFaces) {
+                if (!std::filesystem::exists(face)) {
+                    ITR_WARN("Skybox texture not found: {}", face);
+                    allFilesExist = false;
                 }
             }
-            else {
-                // 游戏模式：显示编辑器相机的视锥体（橙色）
-                RenderFrustum(m_EditorFrustum, glm::vec3(1.0f, 0.5f, 0.0f));
+
+            if (allFilesExist) {
+                m_Skybox = std::make_unique<Skybox>(skyboxFaces);
+                m_EnableSkybox = true;
+                ITR_INFO("Skybox initialized successfully");
             }
-
-            // 恢复状态
-            if (prevDepthTest) glEnable(GL_DEPTH_TEST);
-            if (!prevBlend) glDisable(GL_BLEND);
+            else {
+                ITR_WARN("Some skybox textures missing, skybox disabled");
+                m_EnableSkybox = false;
+            }
         }
-
-        // ==================== 结束渲染帧 ====================
-        Renderer::EndFrame();
-        UnbindRenderState();
-        // 检查 OpenGL 错误
-        error = glGetError();
-        if (error != GL_NO_ERROR) {
-            ITR_ERROR("OpenGL error after rendering: 0x%x", error);
+        catch (const std::exception& e) {
+            ITR_ERROR("Failed to initialize skybox: {}", e.what());
+            m_EnableSkybox = false;
         }
     }
+
+
+    void RendererLayer::OnUpdate(float deltaTime) {
+    // 检查 OpenGL 错误
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR) {
+        ITR_ERROR("OpenGL error before rendering: 0x%x", error);
+    }
+
+    // 更新时间和相机
+    m_Time += deltaTime;
+
+    if (m_UseEditorCamera) {
+        m_EditorCamera.OnUpdate(deltaTime);
+    }
+    else {
+        SyncGameCameraFromScene();
+    }
+
+    // 获取活动场景
+    auto& sceneMgr = Application::GetSceneManager();
+    auto* activeScene = sceneMgr.GetActiveScene();
+    if (!activeScene) {
+        ITR_ERROR("No active Scene");
+        return;
+    }
+    auto& ecs = activeScene->GetECS();
+
+
+    Camera& activeCam = GetActiveCamera();
+    glm::mat4 viewProjection = activeCam.GetProjectionMat() * activeCam.GetViewMat();
+
+    // 调试信息
+    ITR_INFO("=== Camera Debug Info ===");
+    ITR_INFO("Camera Position: ({:.2f}, {:.2f}, {:.2f})",
+        activeCam.GetPosition().x, activeCam.GetPosition().y, activeCam.GetPosition().z);
+    ITR_INFO("Camera FOV: {:.1f}°, Near: {:.2f}, Far: {:.2f}",
+        glm::degrees(activeCam.GetFov()), activeCam.GetNearClip(), activeCam.GetFarClip());
+
+    // 编辑器相机的视锥体总是从当前活动相机（编辑器视图）更新
+    m_EditorFrustum.UpdateFromMatrix(viewProjection);
+
+    // 无论当前是否使用编辑器相机，都尝试从场景主相机更新游戏视锥体
+    // 这样在编辑器模式下可以正确地可视化游戏相机的视锥体
+    Camera* sceneCamera = GetMainCameraFromScene();
+    if (sceneCamera) {
+        glm::mat4 gameViewProjection = sceneCamera->GetProjectionMat() * sceneCamera->GetViewMat();
+        m_GameFrustum.UpdateFromMatrix(gameViewProjection);
+    }
+
+    // 调试信息
+    ITR_INFO("=== RendererLayer Update ===");
+    ITR_INFO("Using {} camera", m_UseEditorCamera ? "Editor" : "Game");
+    ITR_INFO("Camera Position: ({}, {}, {})",
+        activeCam.GetPosition().x, activeCam.GetPosition().y, activeCam.GetPosition().z);
+
+    // 更新碰撞体线框数据
+    if (m_ShowColliders) {
+        PhysicsSystem::DebugDrawColliders(ecs, m_ColliderLines);
+
+        if (!m_ColliderLines.empty()) {
+            glBindBuffer(GL_ARRAY_BUFFER, m_ColliderVBO);
+            glBufferData(GL_ARRAY_BUFFER,
+                m_ColliderLines.size() * sizeof(glm::vec3),
+                m_ColliderLines.data(), GL_DYNAMIC_DRAW);
+            glBindBuffer(GL_ARRAY_BUFFER, 0);
+        }
+    }
+
+    // ==================== 更新 UBO ====================
+    m_CameraUBO->OnUpdate(activeCam, m_Time);
+    m_LightsUBO->OnUpdate(ecs);
+
+    // ==================== 收集渲染项 ====================
+    m_RenderQueue.Clear();
+    RenderSystem::CollectRenderables(ecs, m_RenderQueue, activeCam.GetPosition());
+    m_RenderQueue.Sort(activeCam.GetPosition());
+
+    ITR_INFO("Render Queue - Opaque: {}, Transparent: {}",
+        m_RenderQueue.opaque.size(), m_RenderQueue.transparent.size());
+
+    BindRenderState();
+
+    // ==================== 开始渲染帧 ====================
+    Renderer::BeginFrame();
+
+    // ==================== 渲染不透明物体 ====================
+    RenderOpaqueObjects();
+
+    // ==================== 渲染透明物体 ====================
+    RenderTransparentObjects();
+
+    if (m_EnableSkybox && m_Skybox) {
+        RenderSkybox();
+    }
+
+
+    // ==================== 渲染碰撞体线框 ====================
+    if (m_ShowColliders && !m_ColliderLines.empty()) {
+        RenderColliderWireframes();
+    }
+
+    // ==================== 渲染视锥体 ====================
+    if (m_ShowFrustum) {
+        // 保存状态
+        GLboolean prevDepthTest = glIsEnabled(GL_DEPTH_TEST);
+        GLboolean prevBlend = glIsEnabled(GL_BLEND);
+
+        // 设置视锥体渲染状态
+        glDisable(GL_DEPTH_TEST);
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+        // 编辑器模式下：显示游戏相机的视锥体（绿色）
+        if (m_UseEditorCamera) {
+            if (sceneCamera) {
+                RenderFrustum(m_GameFrustum, glm::vec3(0.0f, 1.0f, 0.0f));
+                ITR_INFO("Rendering Game Camera Frustum in Editor Mode");
+            }
+            else {
+                ITR_WARN("No main scene camera available to render frustum");
+            }
+        }
+        else {
+            // 游戏模式下：不显示任何视锥体
+            ITR_INFO("Game Mode - No frustum rendering");
+        }
+
+        // 恢复状态
+        if (prevDepthTest) glEnable(GL_DEPTH_TEST);
+        if (!prevBlend) glDisable(GL_BLEND);
+    }
+
+    // ==================== 结束渲染帧 ====================
+    Renderer::EndFrame();
+    UnbindRenderState();
+    // 检查 OpenGL 错误
+    error = glGetError();
+    if (error != GL_NO_ERROR) {
+        ITR_ERROR("OpenGL error after rendering: {0}", error);
+    }
+}
 
 
     // 新增碰撞体线框渲染函数
@@ -431,32 +484,47 @@ namespace Intro {
     }
 
     Camera* RendererLayer::GetMainCameraFromScene() {
-        auto* activeScene = Application::GetSceneManager().GetActiveScene();
-        if (!activeScene) return nullptr;
+    auto* activeScene = Application::GetSceneManager().GetActiveScene();
+    if (!activeScene) return nullptr;
 
-        GameObject mainCamera = activeScene->GetMainCamera();
-        if (!mainCamera.IsValid()) {
-            mainCamera = activeScene->FindMainCamera();
-            if (mainCamera.IsValid()) {
-                activeScene->SetMainCamera(mainCamera);
-            }
-            else {
-                return nullptr;
-            }
+    GameObject mainCamera = activeScene->GetMainCamera();
+    if (!mainCamera.IsValid()) {
+        mainCamera = activeScene->FindMainCamera();
+        if (mainCamera.IsValid()) {
+            activeScene->SetMainCamera(mainCamera);
         }
-
-        // 确保有必要的组件
-        if (mainCamera.HasComponent<CameraComponent>() &&
-            mainCamera.HasComponent<TransformComponent>()) {
-
-            auto& cameraComp = mainCamera.GetComponent<CameraComponent>();
-            auto& transform = mainCamera.GetComponent<TransformComponent>();
-
-            // 直接返回游戏相机，避免重复同步
-            return m_GameCamera.get();
+        else {
+            return nullptr;
         }
+    }
 
+    // 确保有必要的组件
+    if (!mainCamera.HasComponent<CameraComponent>() ||
+        !mainCamera.HasComponent<TransformComponent>()) {
         return nullptr;
+    }
+
+    auto& cameraComp = mainCamera.GetComponent<CameraComponent>();
+    auto& transform = mainCamera.GetComponent<TransformComponent>();
+
+    // 确保 m_GameCamera 存在，然后把场景相机组件的数据同步到 m_GameCamera
+    if (!m_GameCamera) {
+        m_GameCamera = std::make_unique<FreeCamera>(m_Window);
+    }
+
+    // 同步位移和旋转
+    m_GameCamera->SetPosition(transform.transform.position);
+    m_GameCamera->SetRotation(transform.transform.rotation);
+
+    // 同步投影参数（CameraComponent 存储的是度数）
+    m_GameCamera->SetPerspective(
+        glm::radians(cameraComp.fov),
+        (float)m_ViewportWidth / (float)m_ViewportHeight,
+        cameraComp.nearClip,
+        cameraComp.farClip
+    );
+
+    return m_GameCamera.get();
     }
 
 
@@ -492,11 +560,21 @@ namespace Intro {
 
     void RendererLayer::SyncGameCameraFromScene() {
         Camera* mainCam = GetMainCameraFromScene();
-        if (mainCam) {
-            // 如果场景中有主相机，同步其参数到游戏相机
+        if (mainCam && m_GameCamera) {
+            // 同步位置和旋转
             m_GameCamera->SetPosition(mainCam->GetPosition());
             m_GameCamera->SetRotation(mainCam->GetRotation());
-            // 同步其他相机参数...
+
+            // 同步投影参数
+            m_GameCamera->SetPerspective(
+                mainCam->GetFov(),
+                (float)m_ViewportWidth / (float)m_ViewportHeight,
+                mainCam->GetNearClip(),
+                mainCam->GetFarClip()
+            );
+
+            ITR_INFO("Game Camera Synced - Pos: ({:.2f}, {:.2f}, {:.2f})",
+                mainCam->GetPosition().x, mainCam->GetPosition().y, mainCam->GetPosition().z);
         }
     }
 
@@ -516,70 +594,118 @@ namespace Intro {
         }
     }
 
+    // RendererLayer.cpp - 修改视锥体渲染逻辑
+    // RendererLayer.cpp - 改进 RenderFrustum 函数
     void RendererLayer::RenderFrustum(const Frustum& frustum, const glm::vec3& color) {
-        if (!m_ShowFrustum) return;
+        const auto& corners = frustum.GetCorners();
 
-        // 使用简单的线条着色器
+        ITR_INFO("Rendering Frustum - Color: ({:.1f}, {:.1f}, {:.1f})", color.r, color.g, color.b);
+        ITR_INFO("Near Plane Corners:");
+        ITR_INFO("  BL: ({:.2f}, {:.2f}, {:.2f})", corners[0].x, corners[0].y, corners[0].z);
+        ITR_INFO("  BR: ({:.2f}, {:.2f}, {:.2f})", corners[1].x, corners[1].y, corners[1].z);
+        ITR_INFO("  TL: ({:.2f}, {:.2f}, {:.2f})", corners[2].x, corners[2].y, corners[2].z);
+        ITR_INFO("  TR: ({:.2f}, {:.2f}, {:.2f})", corners[3].x, corners[3].y, corners[3].z);
+
         auto lineShader = Application::GetShaderLibrary().Get("lineShader");
         if (!lineShader) {
-            // 如果没有线条着色器，使用默认着色器
-            lineShader = m_Shader;
+            ITR_WARN("Line shader not found, frustum rendering skipped");
+            return;
         }
 
         lineShader->Bind();
 
-        m_CameraUBO->BindBase(GL_UNIFORM_BUFFER, CAMERA_UBO_BINDING);
-
-        lineShader->SetUniformMat4("u_ViewProjection", GetActiveCamera().GetProjectionMat() * GetActiveCamera().GetViewMat());
-
-        // 设置颜色
+        // 使用活动相机的视图投影矩阵
+        Camera& activeCam = GetActiveCamera();
+        glm::mat4 viewProj = activeCam.GetProjectionMat() * activeCam.GetViewMat();
+        lineShader->SetUniformMat4("u_ViewProjection", viewProj);
         lineShader->SetUniformVec3("u_Color", color);
-
-        // 获取视锥体角点
-        const auto& corners = frustum.GetCorners();
 
         // 定义视锥体边（12条边）
         const std::vector<std::pair<int, int>> edges = {
             // 近平面
-            {0, 1}, {1, 2}, {2, 3}, {3, 0},
-            // 远平面
-            {4, 5}, {5, 6}, {6, 7}, {7, 4},
+            {0, 1}, {1, 3}, {3, 2}, {2, 0},
+            // 远平面  
+            {4, 5}, {5, 7}, {7, 6}, {6, 4},
             // 连接近远平面
-            {0, 4}, {1, 5}, {2, 6}, {3, 7}
+            {0, 4}, {1, 5}, {3, 7}, {2, 6}
         };
 
-        // 渲染每条边
+        // 收集所有线段顶点
+        std::vector<glm::vec3> lineVertices;
         for (const auto& edge : edges) {
-            glm::vec3 start = corners[edge.first];
-            glm::vec3 end = corners[edge.second];
-
-            // 创建线段顶点数据
-            std::vector<float> lineVertices = {
-                start.x, start.y, start.z,
-                end.x, end.y, end.z
-            };
-
-            // 创建临时VAO和VBO来渲染线段
-            unsigned int VAO, VBO;
-            glGenVertexArrays(1, &VAO);
-            glGenBuffers(1, &VBO);
-
-            glBindVertexArray(VAO);
-            glBindBuffer(GL_ARRAY_BUFFER, VBO);
-            glBufferData(GL_ARRAY_BUFFER, lineVertices.size() * sizeof(float), lineVertices.data(), GL_STATIC_DRAW);
-
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-            glEnableVertexAttribArray(0);
-
-            // 渲染线段
-            glDrawArrays(GL_LINES, 0, 2);
-
-            // 清理
-            glDeleteVertexArrays(1, &VAO);
-            glDeleteBuffers(1, &VBO);
+            lineVertices.push_back(corners[edge.first]);
+            lineVertices.push_back(corners[edge.second]);
         }
 
+        // 创建临时VAO和VBO
+        unsigned int VAO, VBO;
+        glGenVertexArrays(1, &VAO);
+        glGenBuffers(1, &VBO);
+
+        glBindVertexArray(VAO);
+        glBindBuffer(GL_ARRAY_BUFFER, VBO);
+        glBufferData(GL_ARRAY_BUFFER, lineVertices.size() * sizeof(glm::vec3),
+            lineVertices.data(), GL_STATIC_DRAW);
+
+        glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), (void*)0);
+        glEnableVertexAttribArray(0);
+
+        // 设置线宽
+        glLineWidth(2.0f);
+
+        // 渲染所有线段
+        glDrawArrays(GL_LINES, 0, (GLsizei)lineVertices.size());
+
+        // 恢复线宽
+        glLineWidth(1.0f);
+
+        // 清理
+        glDeleteVertexArrays(1, &VAO);
+        glDeleteBuffers(1, &VBO);
+
         lineShader->UnBind();
+
+        ITR_INFO("Frustum rendered successfully - {} lines drawn", edges.size());
+    }
+
+    void RendererLayer::ReloadSkybox(const std::vector<std::string>& facePaths) {
+
+
+        if (facePaths.empty()) {
+            // 使用默认路径或保持原有路径
+            return;
+        }
+
+        try {
+            m_Skybox = std::make_unique<Skybox>(facePaths);
+            ITR_INFO("Skybox reloaded successfully");
+        }
+        catch (const std::exception& e) {
+            ITR_ERROR("Failed to reload skybox: {}", e.what());
+        }
+    }
+
+    void RendererLayer::RenderSkybox() {
+        if (!m_EnableSkybox || !m_Skybox) {
+            return;
+        }
+
+        // 检查OpenGL状态
+        GLenum error = glGetError();
+        if (error != GL_NO_ERROR) {
+            ITR_WARN("OpenGL error before rendering skybox: 0x%x", error);
+            glGetError(); // 清除错误状态
+        }
+
+        // 渲染天空盒
+        Camera& activeCam = GetActiveCamera();
+        m_Skybox->Draw(activeCam.GetViewMat(), activeCam.GetProjectionMat());
+
+        // 检查错误
+        error = glGetError();
+        if (error != GL_NO_ERROR) {
+            ITR_ERROR("OpenGL error after rendering skybox: 0x%x", error);
+        }
     }
 
     void RendererLayer::OnEvent(Event& event)

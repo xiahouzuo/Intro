@@ -1,13 +1,15 @@
 // Frustum.cpp
 #include "itrpch.h"
 #include "Frustum.h"
+#include "Intro/Log.h"
 
 namespace Intro {
 
+    // Frustum.cpp - 修改 UpdateFromMatrix 函数中的角点部分
     void Frustum::UpdateFromMatrix(const glm::mat4& viewProjectionMatrix) {
         glm::mat4 matrix = glm::transpose(viewProjectionMatrix);
 
-        // 提取视锥体平面
+        // 提取平面（保持不变）
         m_Planes[Plane_Left] = matrix[3] + matrix[0];
         m_Planes[Plane_Right] = matrix[3] - matrix[0];
         m_Planes[Plane_Bottom] = matrix[3] + matrix[1];
@@ -20,27 +22,41 @@ namespace Intro {
             NormalizePlane(plane);
         }
 
-        // 计算视锥体角点
-        glm::mat4 inverseMatrix = glm::inverse(viewProjectionMatrix);
-
-        // 定义标准化设备坐标的角点
+        // 修正：使用正确的NDC坐标（OpenGL标准：z范围[-1,1]）
         std::array<glm::vec4, Corner_Count> ndcCorners = {
-            // 近平面
-            glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f),
-            glm::vec4(1.0f, -1.0f, -1.0f, 1.0f),
-            glm::vec4(1.0f,  1.0f, -1.0f, 1.0f),
-            glm::vec4(-1.0f,  1.0f, -1.0f, 1.0f),
-            // 远平面
-            glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f),
-            glm::vec4(1.0f, -1.0f, 1.0f, 1.0f),
-            glm::vec4(1.0f,  1.0f, 1.0f, 1.0f),
-            glm::vec4(-1.0f,  1.0f, 1.0f, 1.0f)
+            // 近平面 (z = -1)
+            glm::vec4(-1.0f, -1.0f, -1.0f, 1.0f),  // 左下近
+            glm::vec4(1.0f, -1.0f, -1.0f, 1.0f),  // 右下近  
+            glm::vec4(-1.0f,  1.0f, -1.0f, 1.0f),  // 左上近
+            glm::vec4(1.0f,  1.0f, -1.0f, 1.0f),  // 右上近
+            // 远平面 (z = 1)
+            glm::vec4(-1.0f, -1.0f, 1.0f, 1.0f),   // 左下远
+            glm::vec4(1.0f, -1.0f, 1.0f, 1.0f),   // 右下远
+            glm::vec4(-1.0f,  1.0f, 1.0f, 1.0f),   // 左上远
+            glm::vec4(1.0f,  1.0f, 1.0f, 1.0f)    // 右上远
         };
 
         // 变换到世界空间
+        glm::mat4 inverseMatrix = glm::inverse(viewProjectionMatrix);
+
         for (size_t i = 0; i < Corner_Count; ++i) {
             glm::vec4 worldCorner = inverseMatrix * ndcCorners[i];
-            m_Corners[i] = glm::vec3(worldCorner) / worldCorner.w;
+
+            // 确保正确的透视除法
+            if (std::abs(worldCorner.w) > 1e-6f) {
+                m_Corners[i] = glm::vec3(worldCorner) / worldCorner.w;
+            }
+            else {
+                m_Corners[i] = glm::vec3(worldCorner);
+                ITR_WARN("Zero w component in frustum corner calculation");
+            }
+        }
+
+        // 调试信息
+        ITR_INFO("Frustum corners:");
+        for (size_t i = 0; i < Corner_Count; ++i) {
+            ITR_INFO("  Corner {}: ({:.3f}, {:.3f}, {:.3f})",
+                i, m_Corners[i].x, m_Corners[i].y, m_Corners[i].z);
         }
     }
 

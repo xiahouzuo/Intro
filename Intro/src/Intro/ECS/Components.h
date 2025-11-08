@@ -115,21 +115,6 @@ namespace Intro {
     };
 
     // 基础碰撞体组件
-    struct ColliderComponent {
-        ColliderType type = ColliderType::Box;
-        glm::vec3 size = glm::vec3(1.0f);      // 对于Box：长宽高
-        float radius = 0.5f;                   // 对于Sphere/Capsule：半径
-        float height = 2.0f;                   // 对于Capsule：高度
-        glm::vec3 offset = glm::vec3(0.0f);    // 相对于物体中心的偏移
-
-        bool isTrigger = false;                // 是否是触发器
-        bool enabled = true;
-
-        ColliderComponent() = default;
-        ColliderComponent(ColliderType colliderType) : type(colliderType) {}
-    };
-
-    // 刚体组件
     struct RigidbodyComponent {
         float mass = 1.0f;
         glm::vec3 velocity = glm::vec3(0.0f);
@@ -144,14 +129,37 @@ namespace Intro {
         bool isKinematic = false;             // 是否由代码控制（不受物理影响）
         bool freezeRotation = false;          // 冻结旋转
 
+        // 新增特性
+        bool isSleeping = false;              // 休眠状态
+        float sleepTimer = 0.0f;              // 休眠计时器
+
+        // 力模式支持
+        enum class ForceMode {
+            Force, Impulse, Velocity, Acceleration
+        };
+
         RigidbodyComponent() = default;
     };
 
-    // 物理材质
-    struct PhysicsMaterial {
-        float bounciness = 0.0f;              // 弹性
-        float friction = 0.5f;                // 摩擦力
-        float dynamicFriction = 0.3f;         // 动摩擦
+    struct ColliderComponent {
+        ColliderType type = ColliderType::Box;
+        glm::vec3 size = glm::vec3(1.0f);      // 对于Box：长宽高
+        float radius = 0.5f;                   // 对于Sphere/Capsule：半径
+        float height = 2.0f;                   // 对于Capsule：高度
+        glm::vec3 offset = glm::vec3(0.0f);    // 相对于物体中心的偏移
+
+        bool isTrigger = false;                // 是否是触发器
+        bool enabled = true;
+
+        // 新增特性
+        uint32_t layerMask = 0xFFFFFFFF;       // 碰撞层掩码
+        float bounciness = 0.0f;               // 弹性
+        float staticFriction = 0.5f;           // 静摩擦
+        float dynamicFriction = 0.3f;          // 动摩擦
+
+        ColliderComponent() = default;
+        ColliderComponent(ColliderType colliderType) : type(colliderType) {}
     };
+
 
 } // namespace Intro
