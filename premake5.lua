@@ -53,14 +53,17 @@ project "Intro"
         "Intro/vendor/entt",
         "Intro/vendor/assimp/include",
         "Intro/vendor/stbimage",
-        "Intro/vendor/imguizmo"
+        "Intro/vendor/imguizmo",
     }
 
     links {
         "GLFW",
         "Glad",
         "ImGui",
-        "opengl32.lib"
+        "opengl32.lib",
+        "gdi32.lib",
+        "user32.lib",
+        "shell32.lib"
     }
 
     -- Windows common settings
@@ -69,7 +72,7 @@ project "Intro"
         staticruntime "On"        -- 使用静态运行时 (/MT 或 /MTd)
         systemversion "latest"
         buildoptions { "/utf-8" }
-        defines { "ITR_PLATFORM_WINDOWS", "ITR_BUILD_DLL", "GLFW_INCLUDE_NONE" }
+        defines { "ITR_PLATFORM_WINDOWS", "ITR_BUILD_DLL", "GLFW_INCLUDE_NONE", "GLM_ENABLE_EXPERIMENTAL" }
         postbuildcommands {
             ("{COPY} %{cfg.buildtarget.relpath} \"../bin/" .. outputdir .. "/Sandbox/\"")
         }
@@ -131,7 +134,7 @@ project "Sandbox"
         "Intro/vendor/stbimage",
         "Intro/vendor/entt",
         "Intro/vendor/imgui",
-        "Intro/vendor/imguizmo"
+        "Intro/vendor/imguizmo",
     }
 
     links { "Intro" }
@@ -141,7 +144,7 @@ project "Sandbox"
         staticruntime "On"        -- Sandbox 也使用静态 CRT
         systemversion "latest"
         buildoptions { "/utf-8" }
-        defines { "ITR_PLATFORM_WINDOWS" }
+        defines { "ITR_PLATFORM_WINDOWS", "GLM_ENABLE_EXPERIMENTAL" }
 
     filter { "system:windows", "configurations:Debug" }
         defines { "ITR_DEBUG" }

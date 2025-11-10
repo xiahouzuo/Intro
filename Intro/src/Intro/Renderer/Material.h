@@ -22,7 +22,7 @@ namespace Intro {
         }
 
         // Bind: 每次绘制时调用，确保 shader 已绑定并 sampler/texture 正确设置
-        void Bind() {
+        virtual void Bind() {
             auto shaderPtr = GetShader();
             if (!shaderPtr) return;
             shaderPtr->Bind();
@@ -74,12 +74,12 @@ namespace Intro {
         }
 
         // setters / getters
-        void SetDiffuse(std::shared_ptr<Texture> texture) { m_Diffuse = std::move(texture); }
+        virtual void SetDiffuse(std::shared_ptr<Texture> texture) { m_Diffuse = std::move(texture); }
         void SetSpecular(std::shared_ptr<Texture> texture) { m_Specular = std::move(texture); }
         void SetShininess(float shininess) { m_Shininess = shininess; }
         void SetAmbient(const glm::vec3& ambient) { m_Ambient = ambient; }
 
-        std::shared_ptr<Texture> GetDiffuseTexture() const { return m_Diffuse; }
+        virtual std::shared_ptr<Texture> GetDiffuseTexture() const { return m_Diffuse; }
         std::shared_ptr<Texture> GetSpecularTexture() const { return m_Specular; }
 
         // 兼容旧名

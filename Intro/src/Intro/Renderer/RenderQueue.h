@@ -2,9 +2,9 @@
 #include "itrpch.h"
 #include "Mesh.h"
 #include "Material.h"
+#include "PBRMaterial.h"
 #include <vector>
 #include <glm/glm.hpp>
-#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/norm.hpp>
 #include <algorithm>
 
@@ -12,11 +12,13 @@
 namespace Intro {
 	struct RenderItem {
 		std::shared_ptr<Mesh> mesh;
-		std::shared_ptr<Material> material;
+		std::shared_ptr<Material> material;  // 统一使用基类指针
 		glm::mat4 transform;
 		float distance;
 		bool transparent;
+		bool isPBR;  // 添加标志区分材质类型
 	};
+
 
 	class ITR_API RenderQueue
 	{

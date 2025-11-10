@@ -1,16 +1,21 @@
 // GameObject.h
 #pragma once
-#include "ECS.h"
-#include "Components.h"
+
 #include "Intro/Core.h"
 #include <string>
 #include <vector>
 #include <memory>
 
+#include <entt/entt.hpp>
+
 namespace Intro {
 
-    // 前置声明
+    // 前置声明 - 只声明不包含
     class Scene;
+    class ECS;
+    struct Transform;  // 修复拼写错误
+
+    using Entity = entt::entity;
 
     // 激活状态组件
     struct ActiveComponent {
@@ -21,7 +26,7 @@ namespace Intro {
     public:
         // 构造/析构
         GameObject();
-        GameObject(ECS::Entity entity, ECS* ecs);
+        GameObject(Entity entity, ECS* ecs);
         ~GameObject() = default;
 
         // 允许拷贝（使用默认实现）
@@ -59,7 +64,7 @@ namespace Intro {
         bool IsActive() const;
 
         // 实体操作
-        ECS::Entity GetEntity() const { return m_Entity; }
+        Entity GetEntity() const { return m_Entity; }  // 改为 Entity
         bool IsValid() const;
 
         // 静态查找方法
@@ -76,7 +81,7 @@ namespace Intro {
         }
 
     private:
-        ECS::Entity m_Entity{ entt::null };
+        Entity m_Entity{ entt::null };
         ECS* m_ECS = nullptr;
     };
 

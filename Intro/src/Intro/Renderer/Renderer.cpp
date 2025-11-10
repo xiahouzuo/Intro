@@ -6,6 +6,8 @@
 #include "Framebuffer.h"
 #include "Intro/RecourceManager/ShaderLibrary.h"
 #include "RenderPass.h"
+#include "Mesh.h"
+#include "Model.h"
 #include <glad/glad.h>
 
 namespace Intro {

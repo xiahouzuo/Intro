@@ -7,6 +7,9 @@
     <Filter Include="src\Intro">
       <UniqueIdentifier>{885923B3-F4C3-D729-3D02-89CFA9ABB57E}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Intro\Config">
+      <UniqueIdentifier>{8DCB0F9A-79C4-2EEC-A2F6-13718E4E0EF8}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Intro\ECS">
       <UniqueIdentifier>{D2D1DFE0-3E92-5B17-07CD-A494734CA0F3}</UniqueIdentifier>
     </Filter>
@@ -19,11 +22,17 @@
     <Filter Include="src\Intro\Math">
       <UniqueIdentifier>{61F3DEFC-4DC1-D202-3655-432922C2AE67}</UniqueIdentifier>
     </Filter>
+    <Filter Include="src\Intro\Physics">
+      <UniqueIdentifier>{FA6438B5-667B-364B-AFF2-C16C1B4807D3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="src\Intro\RecourceManager">
+      <UniqueIdentifier>{8ABA6746-F67C-9BD0-3F2D-2A5DAB2E74AE}</UniqueIdentifier>
+    </Filter>
     <Filter Include="src\Intro\Renderer">
       <UniqueIdentifier>{2ED61F33-1ABA-E088-831A-DBDB6F1DCB0A}</UniqueIdentifier>
     </Filter>
-    <Filter Include="src\Intro\Renderer\Camears">
-      <UniqueIdentifier>{F901B846-E511-6417-4ECB-C8353AFA52B0}</UniqueIdentifier>
+    <Filter Include="src\Intro\Renderer\Cameras">
+      <UniqueIdentifier>{1948B846-0558-6417-6E11-C9355A4053B0}</UniqueIdentifier>
     </Filter>
     <Filter Include="src\Platform">
       <UniqueIdentifier>{21CA02E5-0D2D-9289-B6B2-CA3FA2F45D0C}</UniqueIdentifier>
@@ -48,6 +57,15 @@
     <ClInclude Include="src\Intro\Application.h">
       <Filter>src\Intro</Filter>
     </ClInclude>
+    <ClInclude Include="src\Intro\Config\Config.h">
+      <Filter>src\Intro\Config</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\Config\ConfigObserver.h">
+      <Filter>src\Intro\Config</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\Config\RendererConfigUtils.h">
+      <Filter>src\Intro\Config</Filter>
+    </ClInclude>
     <ClInclude Include="src\Intro\Core.h">
       <Filter>src\Intro</Filter>
     </ClInclude>
@@ -55,6 +73,15 @@
       <Filter>src\Intro\ECS</Filter>
     </ClInclude>
     <ClInclude Include="src\Intro\ECS\ECS.h">
+      <Filter>src\Intro\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\ECS\GameObject.h">
+      <Filter>src\Intro\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\ECS\GameObjectForward.h">
+      <Filter>src\Intro\ECS</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\ECS\GameObjectManager.h">
       <Filter>src\Intro\ECS</Filter>
     </ClInclude>
     <ClInclude Include="src\Intro\ECS\Scene.h">
@@ -99,20 +126,44 @@
     <ClInclude Include="src\Intro\Log.h">
       <Filter>src\Intro</Filter>
     </ClInclude>
+    <ClInclude Include="src\Intro\Math\Math.h">
+      <Filter>src\Intro\Math</Filter>
+    </ClInclude>
     <ClInclude Include="src\Intro\Math\Transform.h">
       <Filter>src\Intro\Math</Filter>
     </ClInclude>
     <ClInclude Include="src\Intro\MouseButtonCodes.h">
       <Filter>src\Intro</Filter>
     </ClInclude>
+    <ClInclude Include="src\Intro\Physics\PhysicsSystem.h">
+      <Filter>src\Intro\Physics</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\RecourceManager\ResourceFileTree.h">
+      <Filter>src\Intro\RecourceManager</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\RecourceManager\ResourceManager.h">
+      <Filter>src\Intro\RecourceManager</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\RecourceManager\ShaderLibrary.h">
+      <Filter>src\Intro\RecourceManager</Filter>
+    </ClInclude>
     <ClInclude Include="src\Intro\Renderer\Cameras\Camera.h">
-      <Filter>src\Intro\Renderer\Camears</Filter>
+      <Filter>src\Intro\Renderer\Cameras</Filter>
     </ClInclude>
     <ClInclude Include="src\Intro\Renderer\Cameras\FreeCamera.h">
-      <Filter>src\Intro\Renderer\Camears</Filter>
+      <Filter>src\Intro\Renderer\Cameras</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\Renderer\Cameras\Frustum.h">
+      <Filter>src\Intro\Renderer\Cameras</Filter>
     </ClInclude>
     <ClInclude Include="src\Intro\Renderer\Cameras\OrbitCamera.h">
-      <Filter>src\Intro\Renderer\Camears</Filter>
+      <Filter>src\Intro\Renderer\Cameras</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\Renderer\Framebuffer.h">
+      <Filter>src\Intro\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\Renderer\Material.h">
+      <Filter>src\Intro\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Intro\Renderer\Mesh.h">
       <Filter>src\Intro\Renderer</Filter>
@@ -120,7 +171,22 @@
     <ClInclude Include="src\Intro\Renderer\Model.h">
       <Filter>src\Intro\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Intro\Renderer\PBRMaterial.h">
+      <Filter>src\Intro\Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\Intro\Renderer\RenderCommand.h">
+      <Filter>src\Intro\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\Renderer\RenderConstant.h">
+      <Filter>src\Intro\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\Renderer\RenderPass.h">
+      <Filter>src\Intro\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\Renderer\RenderQueue.h">
+      <Filter>src\Intro\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\Renderer\Renderer.h">
       <Filter>src\Intro\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Intro\Renderer\RendererLayer.h">
@@ -132,7 +198,16 @@
     <ClInclude Include="src\Intro\Renderer\ShapeGenerator.h">
       <Filter>src\Intro\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Intro\Renderer\Skybox.h">
+      <Filter>src\Intro\Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\Intro\Renderer\Texture.h">
+      <Filter>src\Intro\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\Renderer\UBO.h">
+      <Filter>src\Intro\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Intro\Renderer\UniformBuffers.h">
       <Filter>src\Intro\Renderer</Filter>
     </ClInclude>
     <ClInclude Include="src\Intro\Renderer\Vertex.h">
@@ -156,29 +231,22 @@
     <ClInclude Include="vendor\imguizmo\ImGuizmo.h">
       <Filter>vendor\imguizmo</Filter>
     </ClInclude>
-    <ClInclude Include="src\Intro\Renderer\UBO.h" />
-    <ClInclude Include="src\Intro\Renderer\RenderConstant.h" />
-    <ClInclude Include="src\Intro\Renderer\UniformBuffers.h" />
-    <ClInclude Include="src\Intro\Renderer\Material.h" />
-    <ClInclude Include="src\Intro\Math\Math.h" />
-    <ClInclude Include="src\Intro\Config\Config.h" />
-    <ClInclude Include="src\Intro\Renderer\Renderer.h" />
-    <ClInclude Include="src\Intro\Renderer\Framebuffer.h" />
-    <ClInclude Include="src\Intro\RecourceManager\ShaderLibrary.h" />
-    <ClInclude Include="src\Intro\Renderer\RenderPass.h" />
-    <ClInclude Include="src\Intro\Config\RendererConfigUtils.h" />
-    <ClInclude Include="src\Intro\Config\ConfigObserver.h" />
-    <ClInclude Include="src\Intro\RecourceManager\ResourceManager.h" />
-    <ClInclude Include="src\Intro\RecourceManager\ResourceFileTree.h" />
-    <ClInclude Include="src\Intro\ECS\GameObject.h" />
-    <ClInclude Include="src\Intro\ECS\GameObjectManager.h" />
-    <ClInclude Include="src\Intro\Physics\PhysicsSystem.h" />
-    <ClInclude Include="src\Intro\Renderer\Cameras\Frustum.h" />
-    <ClInclude Include="src\Intro\Renderer\Skybox.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Intro\Application.cpp">
       <Filter>src\Intro</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Intro\Config\Config.cpp">
+      <Filter>src\Intro\Config</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Intro\ECS\GameObject.cpp">
+      <Filter>src\Intro\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Intro\ECS\GameObjectManager.cpp">
+      <Filter>src\Intro\ECS</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Intro\ECS\Scene.cpp">
+      <Filter>src\Intro\ECS</Filter>
     </ClCompile>
     <ClCompile Include="src\Intro\ECS\SceneManager.cpp">
       <Filter>src\Intro\ECS</Filter>
@@ -195,11 +263,29 @@
     <ClCompile Include="src\Intro\Log.cpp">
       <Filter>src\Intro</Filter>
     </ClCompile>
+    <ClCompile Include="src\Intro\Math\Math.cpp">
+      <Filter>src\Intro\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Intro\Physics\PhysicsSystem.cpp">
+      <Filter>src\Intro\Physics</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Intro\RecourceManager\ResourceManager.cpp">
+      <Filter>src\Intro\RecourceManager</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Intro\RecourceManager\ShaderLibrary.cpp">
+      <Filter>src\Intro\RecourceManager</Filter>
+    </ClCompile>
     <ClCompile Include="src\Intro\Renderer\Cameras\FreeCamera.cpp">
-      <Filter>src\Intro\Renderer\Camears</Filter>
+      <Filter>src\Intro\Renderer\Cameras</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Intro\Renderer\Cameras\Frustum.cpp">
+      <Filter>src\Intro\Renderer\Cameras</Filter>
     </ClCompile>
     <ClCompile Include="src\Intro\Renderer\Cameras\OrbitCamera.cpp">
-      <Filter>src\Intro\Renderer\Camears</Filter>
+      <Filter>src\Intro\Renderer\Cameras</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Intro\Renderer\Framebuffer.cpp">
+      <Filter>src\Intro\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Intro\Renderer\Mesh.cpp">
       <Filter>src\Intro\Renderer</Filter>
@@ -207,7 +293,16 @@
     <ClCompile Include="src\Intro\Renderer\Model.cpp">
       <Filter>src\Intro\Renderer</Filter>
     </ClCompile>
+    <ClCompile Include="src\Intro\Renderer\PBRMaterial.cpp">
+      <Filter>src\Intro\Renderer</Filter>
+    </ClCompile>
     <ClCompile Include="src\Intro\Renderer\RenderCommand.cpp">
+      <Filter>src\Intro\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Intro\Renderer\RenderPass.cpp">
+      <Filter>src\Intro\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Intro\Renderer\Renderer.cpp">
       <Filter>src\Intro\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Intro\Renderer\RendererLayer.cpp">
@@ -217,6 +312,9 @@
       <Filter>src\Intro\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Intro\Renderer\ShapeGenerator.cpp">
+      <Filter>src\Intro\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Intro\Renderer\Skybox.cpp">
       <Filter>src\Intro\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Intro\Renderer\Texture.cpp">
@@ -237,19 +335,5 @@
     <ClCompile Include="vendor\imguizmo\ImGuizmo.cpp">
       <Filter>vendor\imguizmo</Filter>
     </ClCompile>
-    <ClCompile Include="src\Intro\Renderer\RenderQueue.h" />
-    <ClCompile Include="src\Intro\Math\Math.cpp" />
-    <ClCompile Include="src\Intro\Config\Config.cpp" />
-    <ClCompile Include="src\Intro\Renderer\Renderer.cpp" />
-    <ClCompile Include="src\Intro\Renderer\Framebuffer.cpp" />
-    <ClCompile Include="src\Intro\RecourceManager\ShaderLibrary.cpp" />
-    <ClCompile Include="src\Intro\Renderer\RenderPass.cpp" />
-    <ClCompile Include="src\Intro\RecourceManager\ResourceManager.cpp" />
-    <ClCompile Include="src\Intro\ECS\GameObject.cpp" />
-    <ClCompile Include="src\Intro\ECS\GameObjectManager.cpp" />
-    <ClCompile Include="src\Intro\Physics\PhysicsSystem.cpp" />
-    <ClCompile Include="src\Intro\ECS\Scene.cpp" />
-    <ClCompile Include="src\Intro\Renderer\Cameras\Frustum.cpp" />
-    <ClCompile Include="src\Intro\Renderer\Skybox.cpp" />
   </ItemGroup>
 </Project>

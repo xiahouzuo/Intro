@@ -1,19 +1,20 @@
 // ECS/Components.h
 #pragma once
-#include "Intro/Math/Transform.h" // 你的 Transform 类
-#include "Intro/Renderer/Mesh.h"  // 你的 Mesh 类
-#include "Intro/Renderer/Model.h"
-#include "Intro/Renderer/Cameras/Camera.h"
-#include "Intro/Renderer/Material.h"
-#define GLM_ENABLE_EXPERIMENTAL
+#include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/quaternion.hpp>
 #include <memory>
+#include <string>
+#include "Intro/Math/Transform.h"
 
 namespace Intro {
 
     
     class Model;
+    class Material;
+    class PBRMaterial;
+    class Mesh;
+    class Transform;
 
     // 变换组件：所有实体都可以有
     struct TransformComponent {
@@ -103,7 +104,19 @@ namespace Intro {
             : material(std::move(mat)), Transparent(transparent) {
         }
     };
+    //PBR材质
+    struct PBRMaterialComponent {
+        std::shared_ptr<PBRMaterial> material;
+        bool Transparent = false;
 
+        PBRMaterialComponent(std::shared_ptr<PBRMaterial> mat = nullptr, bool transparent = false)
+            : material(std::move(mat)), Transparent(transparent) {
+        }
+
+        // 只保留必要的便捷方法，其他直接通过 material 访问
+        bool HasMaterial() const { return material != nullptr; }
+
+    };
 
 // 碰撞体类型
     enum class ColliderType {

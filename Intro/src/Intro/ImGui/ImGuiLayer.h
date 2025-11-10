@@ -1,7 +1,6 @@
 #pragma once
 #include "Intro/Layer.h"
 #include "imgui.h"
-#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/glm.hpp>
 #include "ImGuizmo.h"
 #include "Intro/Application.h"
@@ -12,6 +11,7 @@
 #include "Intro/Events/MouseEvent.h"
 #include "Intro/Renderer/RendererLayer.h"
 #include "Intro/ECS/Components.h"
+#include "Intro/Renderer/PBRMaterial.h"
 #include "glm/gtc/quaternion.hpp"
 #include <vector>
 #include <string>

@@ -7,6 +7,7 @@
 #include <functional>
 #include "Scene.h"
 #include "Intro/Core.h"
+#include "Intro/Log.h"
 
 namespace Intro {
 

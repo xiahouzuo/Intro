@@ -52,20 +52,42 @@ namespace Intro {
         }
 
         static void CollectRenderables(ECS& ecs, RenderQueue& queue, const glm::vec3& cameraPos) {
+            // 处理普通材质
             auto meshView = ecs.GetRegistry().view<TransformComponent, MeshComponent, MaterialComponent>();
             for (auto [entity, tf, meshComp, matComp] : meshView.each()) {
                 if (!meshComp.mesh || !matComp.material) continue;
                 RenderItem item;
                 item.mesh = meshComp.mesh;
                 item.material = matComp.material;
-                item.transform = tf.transform.GetModelMatrix(); // 假设Transform有GetMatrix方法
+                item.transform = tf.transform.GetModelMatrix();
                 item.transparent = matComp.Transparent;
+                item.isPBR = false;  // 标记为非PBR材质
+
                 if (item.transparent)
                     queue.transparent.push_back(item);
                 else
                     queue.opaque.push_back(item);
             }
 
+            // 处理PBR材质 - 关键修改：将PBRMaterial转换为Material基类
+            auto meshViewPbr = ecs.GetRegistry().view<TransformComponent, MeshComponent, PBRMaterialComponent>();
+            for (auto [entity, tf, meshComp, matComp] : meshViewPbr.each()) {
+                if (!meshComp.mesh || !matComp.material) continue;
+                RenderItem item;
+                item.mesh = meshComp.mesh;
+
+                // 关键：将PBRMaterial转换为Material基类
+                item.material = std::static_pointer_cast<Material>(matComp.material);
+
+                item.transform = tf.transform.GetModelMatrix();
+                item.transparent = matComp.Transparent;
+                item.isPBR = true;  // 标记为PBR材质
+
+                if (item.transparent)
+                    queue.transparent.push_back(item);
+                else
+                    queue.opaque.push_back(item);
+            }
 
             auto modelView = ecs.GetRegistry().view<TransformComponent, ModelComponent, MaterialComponent>();
             for (auto [entity, tf, modelComp, matComp] : modelView.each()) {
@@ -76,6 +98,26 @@ namespace Intro {
                     item.material = matComp.material;
                     item.transform = tf.transform.GetModelMatrix();
                     item.transparent = matComp.Transparent;
+                    item.isPBR = false;
+                    if (item.transparent)
+                        queue.transparent.push_back(item);
+                    else
+                        queue.opaque.push_back(item);
+                }
+            }
+
+
+
+            auto modelViewPbr = ecs.GetRegistry().view<TransformComponent, ModelComponent, PBRMaterialComponent>();
+            for (auto [entity, tf, modelComp, matComp] : modelViewPbr.each()) {
+                if (!modelComp.model || !matComp.material) continue;
+                for (const auto& meshPtr : modelComp.model->GetMeshes()) {
+                    RenderItem item;
+                    item.mesh = meshPtr;
+                    item.material = std::static_pointer_cast<Material>(matComp.material);
+                    item.transform = tf.transform.GetModelMatrix();
+                    item.transparent = matComp.Transparent;
+                    item.isPBR = true;
                     if (item.transparent)
                         queue.transparent.push_back(item);
                     else

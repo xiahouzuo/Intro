@@ -1,14 +1,17 @@
+// GameObjectManager.h
 #pragma once
 
 #include "Intro/Core.h"
-#include "GameObject.h"
-#include "Scene.h"
+#include "GameObject.h"  // 包含 GameObject，因为需要它的完整定义
 #include <vector>
 #include <string>
 #include <functional>
 #include <memory>
 
 namespace Intro {
+
+    // 前置声明
+    class Scene;
 
     class ITR_API GameObjectManager {
     public:
@@ -89,7 +92,9 @@ namespace Intro {
     template<typename T>
     std::vector<GameObject> GameObjectManager::FindAllWithComponent() const {
         if (!m_Scene) return {};
+        // 这里需要 Scene 有对应的方法，如果没有需要实现
         return m_Scene->FindGameObjectsWithComponent<T>();
+
     }
 
 } // namespace Intro

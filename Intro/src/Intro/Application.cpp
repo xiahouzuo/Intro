@@ -6,6 +6,7 @@
 #include "Intro/Config/Config.h"
 #include "Intro/Config/RendererConfigUtils.h"
 #include "Intro/RecourceManager/ResourceManager.h"
+#include "Intro/Physics/PhysicsSystem.h"
 #include "glm/glm.hpp"
 #include <GLFW/glfw3.h>
 
@@ -80,6 +81,12 @@ namespace Intro {
 			"E:/MyEngine/Intro/Intro/src/Intro/assets/shaders/tempShader.frag"
 		);
 		s_ShaderLibrary->Add("defaultShader", defaultShader);
+
+		auto PBRShader = std::make_shared<Shader>(
+			"E:/MyEngine/Intro/Intro/src/Intro/assets/shaders/pbrShader.vert",
+			"E:/MyEngine/Intro/Intro/src/Intro/assets/shaders/pbrShader.frag"
+		);
+		s_ShaderLibrary->Add("pbrShader", PBRShader);
 
 		defaultMaterial = std::make_shared<Material>(defaultShader);
 

@@ -1,16 +1,37 @@
+// Scene.cpp
 #include "itrpch.h"
 #include "Scene.h"
 #include "GameObjectManager.h"
+#include "GameObject.h"
+#include "Components.h"
 
-// 如果你在 Scene.h 已经包含了所需 component headers，则直接实现：
 namespace Intro {
+
+    Scene::Scene(std::string name)
+        : m_Name(std::move(name))
+        , m_Active(true)
+    {
+        m_GameObjectManager = std::make_unique<GameObjectManager>(this);
+    }
+
+    Scene::~Scene() = default;
 
     void Scene::OnLoad()
     {
-        if (!m_MainCamera.IsValid())
+        if (m_MainCameraEntity == entt::null)
         {
             CreateDefaultMainCamera();
         }
+    }
+
+    void Scene::OnUnload() {}
+
+    void Scene::OnUpdate(float dt, bool isPlaying) {
+        // 实现...
+    }
+
+    void Scene::OnUpdate(float dt) {
+        OnUpdate(dt, true);
     }
 
     GameObject Scene::CreateGameObject(const std::string& name) {
@@ -20,7 +41,6 @@ namespace Intro {
         m_ECS.AddComponent<ActiveComponent>(entity);
         GameObject go(entity, &m_ECS);
 
-        // 通知 manager 需要刷新（m_GameObjectManager 是 unique_ptr）
         if (m_GameObjectManager) {
             m_GameObjectManager->MarkNeedsRefresh();
         }
@@ -31,8 +51,8 @@ namespace Intro {
     void Scene::DestroyGameObject(GameObject& gameObject) {
         if (gameObject.IsValid()) {
             // 如果销毁的是主相机，清除引用
-            if (gameObject == m_MainCamera) {
-                m_MainCamera = GameObject();
+            if (gameObject.GetEntity() == m_MainCameraEntity) {
+                m_MainCameraEntity = entt::null;
             }
             m_ECS.DestroyEntity(gameObject.GetEntity());
             gameObject = GameObject();
@@ -48,33 +68,75 @@ namespace Intro {
         return result;
     }
 
-    void Scene::SetMainCamera(GameObject camera) {
-        if (camera.IsValid() && camera.HasComponent<CameraComponent>()) {
-            // 清除之前主相机的标志
-            if (m_MainCamera.IsValid() && m_MainCamera.HasComponent<CameraComponent>()) {
-                m_MainCamera.GetComponent<CameraComponent>().isMainCamera = false;
-            }
+    GameObjectManager& Scene::GetGameObjectManager() {
+        return *m_GameObjectManager;
+    }
 
-            m_MainCamera = camera;
-            m_MainCamera.GetComponent<CameraComponent>().isMainCamera = true;
+    const GameObjectManager& Scene::GetGameObjectManager() const {
+        return *m_GameObjectManager;
+    }
+
+    GameObject Scene::Instantiate(const GameObject& original, const glm::vec3& position) {
+        auto newEntity = m_ECS.CreateEntity();
+        // TODO: 复制组件
+        return GameObject(newEntity, &m_ECS);
+    }
+
+    void Scene::Destroy(GameObject& gameObject) {
+        if (gameObject.IsValid()) {
+            m_ECS.DestroyEntity(gameObject.GetEntity());
+            gameObject = GameObject();
         }
     }
 
-    GameObject Scene::FindMainCamera(){
+    // 新的 Entity 方法
+    ECS::Entity Scene::GetMainCameraEntity() const {
+        return m_MainCameraEntity;
+    }
+
+    void Scene::SetMainCameraEntity(ECS::Entity cameraEntity) {
+        if (cameraEntity != entt::null && m_ECS.HasComponent<CameraComponent>(cameraEntity)) {
+            // 清除之前主相机的标志
+            if (m_MainCameraEntity != entt::null && m_ECS.HasComponent<CameraComponent>(m_MainCameraEntity)) {
+                m_ECS.GetComponent<CameraComponent>(m_MainCameraEntity).isMainCamera = false;
+            }
+
+            m_MainCameraEntity = cameraEntity;
+            m_ECS.GetComponent<CameraComponent>(m_MainCameraEntity).isMainCamera = true;
+        }
+    }
+
+    ECS::Entity Scene::FindMainCameraEntity() {
         auto view = m_ECS.GetRegistry().view<CameraComponent>();
         for (auto entity : view) {
             auto& cameraComp = view.get<CameraComponent>(entity);
             if (cameraComp.isMainCamera) {
-                return GameObject(entity, &m_ECS);
+                return entity;
             }
         }
-        return GameObject();
+        return entt::null;
+    }
+
+    // 兼容的 GameObject 方法
+    GameObject Scene::GetMainCamera() {
+        return GameObject(m_MainCameraEntity, &m_ECS);
+    }
+
+    void Scene::SetMainCamera(GameObject camera) {
+        if (camera.IsValid()) {
+            SetMainCameraEntity(camera.GetEntity());
+        }
+    }
+
+    GameObject Scene::FindMainCamera() {
+        auto entity = FindMainCameraEntity();
+        return GameObject(entity, &m_ECS);
     }
 
     void Scene::CreateDefaultMainCamera() {
         GameObject mainCamera = CreateGameObject("Main Camera");
 
-        // 设置初始位置 - 在编辑器相机后方，看向场景
+        // 设置初始位置
         auto& transform = mainCamera.GetComponent<TransformComponent>();
         transform.transform.position = glm::vec3(0.0f, 2.0f, 5.0f);
         transform.transform.rotation = glm::quatLookAt(
@@ -90,6 +152,6 @@ namespace Intro {
         cameraComp.isMainCamera = true;
         mainCamera.AddComponent<CameraComponent>(cameraComp);
 
-        SetMainCamera(mainCamera);
+        SetMainCameraEntity(mainCamera.GetEntity());
     }
 } // namespace Intro

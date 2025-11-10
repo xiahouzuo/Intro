@@ -78,7 +78,7 @@
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;ITR_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;GLM_ENABLE_EXPERIMENTAL;ITR_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\Intro\vendor\spdlog\include;..\Intro\src;..\Intro\src\Intro;..\Intro\vendor\glm;..;..\Intro\vendor\Glad\include;..\Intro\vendor\assimp\include;..\Intro\vendor\stbimage;..\Intro\vendor\entt;..\Intro\vendor\imgui;..\Intro\vendor\imguizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
@@ -98,7 +98,7 @@
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;ITR_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;GLM_ENABLE_EXPERIMENTAL;ITR_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\Intro\vendor\spdlog\include;..\Intro\src;..\Intro\src\Intro;..\Intro\vendor\glm;..;..\Intro\vendor\Glad\include;..\Intro\vendor\assimp\include;..\Intro\vendor\stbimage;..\Intro\vendor\entt;..\Intro\vendor\imgui;..\Intro\vendor\imguizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
@@ -122,7 +122,7 @@
     <ClCompile>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
-      <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;ITR_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>ITR_PLATFORM_WINDOWS;GLM_ENABLE_EXPERIMENTAL;ITR_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>..\Intro\vendor\spdlog\include;..\Intro\src;..\Intro\src\Intro;..\Intro\vendor\glm;..;..\Intro\vendor\Glad\include;..\Intro\vendor\assimp\include;..\Intro\vendor\stbimage;..\Intro\vendor\entt;..\Intro\vendor\imgui;..\Intro\vendor\imguizmo;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>

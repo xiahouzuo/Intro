@@ -52,12 +52,6 @@ namespace Intro {
             }
         }
 
-        // µ÷ÊÔÐÅÏ¢
-        ITR_INFO("Frustum corners:");
-        for (size_t i = 0; i < Corner_Count; ++i) {
-            ITR_INFO("  Corner {}: ({:.3f}, {:.3f}, {:.3f})",
-                i, m_Corners[i].x, m_Corners[i].y, m_Corners[i].z);
-        }
     }
 
     void Frustum::NormalizePlane(glm::vec4& plane) {

@@ -91,7 +91,7 @@
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>opengl32.lib;assimp-vc143-mtd.lib;zlibstaticd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;gdi32.lib;user32.lib;shell32.lib;assimp-vc143-mtd.lib;zlibstaticd.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>vendor\assimp\libs\Debug;vendor\assimp\zlib\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Debug-windows-x86_64\Intro\Intro.lib</ImportLibrary>
     </Link>
@@ -120,7 +120,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opengl32.lib;assimp-vc143-mt.lib;zlibstatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;gdi32.lib;user32.lib;shell32.lib;assimp-vc143-mt.lib;zlibstatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>vendor\assimp\libs\Release;vendor\assimp\zlib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Release-windows-x86_64\Intro\Intro.lib</ImportLibrary>
     </Link>
@@ -149,7 +149,7 @@
       <SubSystem>Windows</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
-      <AdditionalDependencies>opengl32.lib;assimp-vc143-mt.lib;zlibstatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;gdi32.lib;user32.lib;shell32.lib;assimp-vc143-mt.lib;zlibstatic.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>vendor\assimp\libs\Release;vendor\assimp\zlib\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <ImportLibrary>..\bin\Dist-windows-x86_64\Intro\Intro.lib</ImportLibrary>
     </Link>
@@ -167,6 +167,7 @@
     <ClInclude Include="src\Intro\ECS\Components.h" />
     <ClInclude Include="src\Intro\ECS\ECS.h" />
     <ClInclude Include="src\Intro\ECS\GameObject.h" />
+    <ClInclude Include="src\Intro\ECS\GameObjectForward.h" />
     <ClInclude Include="src\Intro\ECS\GameObjectManager.h" />
     <ClInclude Include="src\Intro\ECS\Scene.h" />
     <ClInclude Include="src\Intro\ECS\SceneManager.h" />
@@ -197,11 +198,13 @@
     <ClInclude Include="src\Intro\Renderer\Material.h" />
     <ClInclude Include="src\Intro\Renderer\Mesh.h" />
     <ClInclude Include="src\Intro\Renderer\Model.h" />
+    <ClInclude Include="src\Intro\Renderer\PBRMaterial.h" />
     <ClInclude Include="src\Intro\Renderer\RenderCommand.h" />
     <ClInclude Include="src\Intro\Renderer\RenderConstant.h" />
+    <ClInclude Include="src\Intro\Renderer\RenderPass.h" />
+    <ClInclude Include="src\Intro\Renderer\RenderQueue.h" />
     <ClInclude Include="src\Intro\Renderer\Renderer.h" />
     <ClInclude Include="src\Intro\Renderer\RendererLayer.h" />
-    <ClInclude Include="src\Intro\Renderer\RenderPass.h" />
     <ClInclude Include="src\Intro\Renderer\Shader.h" />
     <ClInclude Include="src\Intro\Renderer\ShapeGenerator.h" />
     <ClInclude Include="src\Intro\Renderer\Skybox.h" />
@@ -232,20 +235,20 @@
     <ClCompile Include="src\Intro\RecourceManager\ResourceManager.cpp" />
     <ClCompile Include="src\Intro\RecourceManager\ShaderLibrary.cpp" />
     <ClCompile Include="src\Intro\Renderer\Cameras\FreeCamera.cpp" />
-    <ClCompile Include="src\Intro\Renderer\Cameras\OrbitCamera.cpp" />
     <ClCompile Include="src\Intro\Renderer\Cameras\Frustum.cpp" />
+    <ClCompile Include="src\Intro\Renderer\Cameras\OrbitCamera.cpp" />
     <ClCompile Include="src\Intro\Renderer\Framebuffer.cpp" />
     <ClCompile Include="src\Intro\Renderer\Mesh.cpp" />
     <ClCompile Include="src\Intro\Renderer\Model.cpp" />
+    <ClCompile Include="src\Intro\Renderer\PBRMaterial.cpp" />
     <ClCompile Include="src\Intro\Renderer\RenderCommand.cpp" />
+    <ClCompile Include="src\Intro\Renderer\RenderPass.cpp" />
     <ClCompile Include="src\Intro\Renderer\Renderer.cpp" />
     <ClCompile Include="src\Intro\Renderer\RendererLayer.cpp" />
-    <ClCompile Include="src\Intro\Renderer\RenderPass.cpp" />
     <ClCompile Include="src\Intro\Renderer\Shader.cpp" />
     <ClCompile Include="src\Intro\Renderer\ShapeGenerator.cpp" />
     <ClCompile Include="src\Intro\Renderer\Skybox.cpp" />
     <ClCompile Include="src\Intro\Renderer\Texture.cpp" />
-    <ClCompile Include="src\Intro\Renderer\RenderQueue.h" />
     <ClCompile Include="src\Platform\OpenGL\ImGuiOpenGLRenderer.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />

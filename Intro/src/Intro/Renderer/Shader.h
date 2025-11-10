@@ -46,10 +46,10 @@ namespace Intro {
 			}
 		}
 
+		int GetUniformLocation(const std::string& name) const;
 	private:
 		void CompileShader(const char* vertexShaderPath, const char* fragmentShaderPath);
 
-		int GetUniformLocation(const std::string& name) const;
 	private:
 		unsigned int m_ShaderID;
 	};

@@ -5,6 +5,7 @@
 #include "Intro/Application.h"
 #include "Intro/ECS/SceneManager.h"
 #include "Intro/RecourceManager/ShaderLibrary.h"
+#include "Intro/Physics/PhysicsSystem.h"
 #include "RenderCommand.h"
 #include "UBO.h"
 #include <glad/glad.h>
@@ -122,6 +123,7 @@ namespace Intro {
 
 
     void RendererLayer::OnUpdate(float deltaTime) {
+  
     // 检查 OpenGL 错误
     GLenum error = glGetError();
     if (error != GL_NO_ERROR) {
@@ -150,14 +152,6 @@ namespace Intro {
 
     Camera& activeCam = GetActiveCamera();
     glm::mat4 viewProjection = activeCam.GetProjectionMat() * activeCam.GetViewMat();
-
-    // 调试信息
-    ITR_INFO("=== Camera Debug Info ===");
-    ITR_INFO("Camera Position: ({:.2f}, {:.2f}, {:.2f})",
-        activeCam.GetPosition().x, activeCam.GetPosition().y, activeCam.GetPosition().z);
-    ITR_INFO("Camera FOV: {:.1f}°, Near: {:.2f}, Far: {:.2f}",
-        glm::degrees(activeCam.GetFov()), activeCam.GetNearClip(), activeCam.GetFarClip());
-
     // 编辑器相机的视锥体总是从当前活动相机（编辑器视图）更新
     m_EditorFrustum.UpdateFromMatrix(viewProjection);
 
@@ -168,12 +162,6 @@ namespace Intro {
         glm::mat4 gameViewProjection = sceneCamera->GetProjectionMat() * sceneCamera->GetViewMat();
         m_GameFrustum.UpdateFromMatrix(gameViewProjection);
     }
-
-    // 调试信息
-    ITR_INFO("=== RendererLayer Update ===");
-    ITR_INFO("Using {} camera", m_UseEditorCamera ? "Editor" : "Game");
-    ITR_INFO("Camera Position: ({}, {}, {})",
-        activeCam.GetPosition().x, activeCam.GetPosition().y, activeCam.GetPosition().z);
 
     // 更新碰撞体线框数据
     if (m_ShowColliders) {
@@ -197,8 +185,6 @@ namespace Intro {
     RenderSystem::CollectRenderables(ecs, m_RenderQueue, activeCam.GetPosition());
     m_RenderQueue.Sort(activeCam.GetPosition());
 
-    ITR_INFO("Render Queue - Opaque: {}, Transparent: {}",
-        m_RenderQueue.opaque.size(), m_RenderQueue.transparent.size());
 
     BindRenderState();
 
@@ -236,7 +222,7 @@ namespace Intro {
         if (m_UseEditorCamera) {
             if (sceneCamera) {
                 RenderFrustum(m_GameFrustum, glm::vec3(0.0f, 1.0f, 0.0f));
-                ITR_INFO("Rendering Game Camera Frustum in Editor Mode");
+                                                         
             }
             else {
                 ITR_WARN("No main scene camera available to render frustum");
@@ -315,11 +301,13 @@ namespace Intro {
 
     void RendererLayer::RenderOpaqueObjects() {
         std::shared_ptr<Material> lastMaterial = nullptr;
+        bool lastIsPBR = false;
 
         for (const auto& item : m_RenderQueue.opaque) {
             auto& material = item.material ? item.material : m_DefaultMaterial;
+            bool currentIsPBR = item.isPBR;
 
-            if (material != lastMaterial) {
+            if (material != lastMaterial || currentIsPBR != lastIsPBR) {
                 // 设置着色器并绑定材质
                 SetupShaderUniforms(material->GetShader());
                 material->Bind();
@@ -328,6 +316,7 @@ namespace Intro {
                 m_LightsUBO->BindBase(GL_UNIFORM_BUFFER, LIGHTS_UBO_BINDING);
 
                 lastMaterial = material;
+                lastIsPBR = currentIsPBR;
             }
 
             // 设置物体的变换矩阵（这个通常不是通过 UBO 传递的）
@@ -599,12 +588,6 @@ namespace Intro {
     void RendererLayer::RenderFrustum(const Frustum& frustum, const glm::vec3& color) {
         const auto& corners = frustum.GetCorners();
 
-        ITR_INFO("Rendering Frustum - Color: ({:.1f}, {:.1f}, {:.1f})", color.r, color.g, color.b);
-        ITR_INFO("Near Plane Corners:");
-        ITR_INFO("  BL: ({:.2f}, {:.2f}, {:.2f})", corners[0].x, corners[0].y, corners[0].z);
-        ITR_INFO("  BR: ({:.2f}, {:.2f}, {:.2f})", corners[1].x, corners[1].y, corners[1].z);
-        ITR_INFO("  TL: ({:.2f}, {:.2f}, {:.2f})", corners[2].x, corners[2].y, corners[2].z);
-        ITR_INFO("  TR: ({:.2f}, {:.2f}, {:.2f})", corners[3].x, corners[3].y, corners[3].z);
 
         auto lineShader = Application::GetShaderLibrary().Get("lineShader");
         if (!lineShader) {
@@ -665,7 +648,6 @@ namespace Intro {
 
         lineShader->UnBind();
 
-        ITR_INFO("Frustum rendered successfully - {} lines drawn", edges.size());
     }
 
     void RendererLayer::ReloadSkybox(const std::vector<std::string>& facePaths) {

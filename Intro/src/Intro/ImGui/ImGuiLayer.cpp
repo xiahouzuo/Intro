@@ -676,6 +676,227 @@ namespace Intro {
 			}
 		}
 
+		// --- PBR Material Component ---
+		if (m_SelectedGameObject.HasComponent<PBRMaterialComponent>())
+		{
+			if (ImGui::CollapsingHeader("PBR Material", ImGuiTreeNodeFlags_DefaultOpen))
+			{
+				auto& pbrMaterialComp = m_SelectedGameObject.GetComponent<PBRMaterialComponent>();
+
+				if (!pbrMaterialComp.HasMaterial()) {
+					ImGui::Text("No PBR Material assigned");
+					if (ImGui::Button("Create PBR Material")) {
+						//pbrMaterialComp.CreateDefaultMaterial();
+						if (pbrMaterialComp.HasMaterial()) {
+							ITR_INFO("Created PBR Material for entity");
+						}
+						else {
+							ITR_ERROR("Failed to create PBR Material - shader not found");
+						}
+					}
+				}
+				else {
+					auto& mat = pbrMaterialComp.material;
+					bool materialChanged = false;
+
+					// 直接使用PBRMaterial的接口
+					// Albedo颜色
+					glm::vec3 albedo = mat->GetAlbedo();
+					if (ImGui::ColorEdit3("Albedo", &albedo[0])) {
+						mat->SetAlbedo(albedo);
+						materialChanged = true;
+					}
+
+					// 金属度
+					float metallic = mat->GetMetallic();
+					if (ImGui::SliderFloat("Metallic", &metallic, 0.0f, 1.0f)) {
+						mat->SetMetallic(metallic);
+						materialChanged = true;
+					}
+
+					// 粗糙度
+					float roughness = mat->GetRoughness();
+					if (ImGui::SliderFloat("Roughness", &roughness, 0.0f, 1.0f)) {
+						mat->SetRoughness(roughness);
+						materialChanged = true;
+					}
+
+					// 环境光遮蔽
+					float ao = mat->GetAO();
+					if (ImGui::SliderFloat("AO", &ao, 0.0f, 1.0f)) {
+						mat->SetAO(ao);
+						materialChanged = true;
+					}
+
+					// 自发光
+					glm::vec3 emissive = mat->GetEmissive();
+					if (ImGui::ColorEdit3("Emissive", &emissive[0])) {
+						mat->SetEmissive(emissive);
+						materialChanged = true;
+					}
+
+					// 曝光
+					float exposure = mat->GetExposure();
+					if (ImGui::SliderFloat("Exposure", &exposure, 0.1f, 5.0f)) {
+						mat->SetExposure(exposure);
+						materialChanged = true;
+					}
+
+					ImGui::Separator();
+					ImGui::Text("PBR Textures:");
+
+					// 纹理使用标志 - 直接使用PBRMaterial的接口
+					bool useAlbedoMap = mat->UseAlbedoMap();
+					if (ImGui::Checkbox("Use Albedo Map", &useAlbedoMap)) {
+						mat->SetUseAlbedoMap(useAlbedoMap);
+						materialChanged = true;
+					}
+
+					bool useNormalMap = mat->UseNormalMap();
+					if (ImGui::Checkbox("Use Normal Map", &useNormalMap)) {
+						mat->SetUseNormalMap(useNormalMap);
+						materialChanged = true;
+					}
+
+					bool useMetallicMap = mat->UseMetallicMap();
+					if (ImGui::Checkbox("Use Metallic Map", &useMetallicMap)) {
+						mat->SetUseMetallicMap(useMetallicMap);
+						materialChanged = true;
+					}
+
+					bool useRoughnessMap = mat->UseRoughnessMap();
+					if (ImGui::Checkbox("Use Roughness Map", &useRoughnessMap)) {
+						mat->SetUseRoughnessMap(useRoughnessMap);
+						materialChanged = true;
+					}
+
+					bool useAOMap = mat->UseAOMap();
+					if (ImGui::Checkbox("Use AO Map", &useAOMap)) {
+						mat->SetUseAOMap(useAOMap);
+						materialChanged = true;
+					}
+
+					bool useEmissiveMap = mat->UseEmissiveMap();
+					if (ImGui::Checkbox("Use Emissive Map", &useEmissiveMap)) {
+						mat->SetUseEmissiveMap(useEmissiveMap);
+						materialChanged = true;
+					}
+
+					// 透明度
+					bool transparent = pbrMaterialComp.Transparent;
+					if (ImGui::Checkbox("Transparent", &transparent)) {
+						pbrMaterialComp.Transparent = transparent;
+						materialChanged = true;
+					}
+
+					ImGui::Separator();
+
+					// 纹理拖拽目标
+					ImGui::Text("Drag textures from Resource Browser:");
+
+					// 为每种纹理类型创建拖拽目标
+					const char* textureTypes[] = {
+						"Albedo", "Normal", "Metallic", "Roughness", "AO", "Emissive"
+					};
+
+					for (const char* texType : textureTypes) {
+						ImGui::Text("%s Map:", texType);
+
+						// 显示当前纹理状态
+						std::shared_ptr<Texture> currentTex = nullptr;
+						bool hasTexture = false;
+
+						if (strcmp(texType, "Albedo") == 0) {
+							currentTex = mat->GetAlbedoMap();
+							hasTexture = mat->UseAlbedoMap() && currentTex;
+						}
+						else if (strcmp(texType, "Normal") == 0) {
+							currentTex = mat->GetNormalMap();
+							hasTexture = mat->UseNormalMap() && currentTex;
+						}
+						else if (strcmp(texType, "Metallic") == 0) {
+							currentTex = mat->GetMetallicMap();
+							hasTexture = mat->UseMetallicMap() && currentTex;
+						}
+						else if (strcmp(texType, "Roughness") == 0) {
+							currentTex = mat->GetRoughnessMap();
+							hasTexture = mat->UseRoughnessMap() && currentTex;
+						}
+						else if (strcmp(texType, "AO") == 0) {
+							currentTex = mat->GetAOMap();
+							hasTexture = mat->UseAOMap() && currentTex;
+						}
+						else if (strcmp(texType, "Emissive") == 0) {
+							currentTex = mat->GetEmissiveMap();
+							hasTexture = mat->UseEmissiveMap() && currentTex;
+						}
+
+						ImGui::Text("  %s", hasTexture ? "Loaded" : "None");
+
+						// 拖拽目标
+						if (ImGui::BeginDragDropTarget()) {
+							if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("RESOURCE_TEXTURE")) {
+								IM_ASSERT(payload->DataSize == sizeof(std::shared_ptr<ResourceFileNode>));
+								std::shared_ptr<ResourceFileNode> textureNode = *static_cast<std::shared_ptr<ResourceFileNode>*>(payload->Data);
+								auto texture = ResourceManager::Get().LoadTextureFromNode(textureNode);
+								if (texture) {
+									// 根据纹理类型设置对应的贴图
+									if (strcmp(texType, "Albedo") == 0) {
+										mat->SetAlbedoMap(texture);
+										mat->SetUseAlbedoMap(true);
+									}
+									else if (strcmp(texType, "Normal") == 0) {
+										mat->SetNormalMap(texture);
+										mat->SetUseNormalMap(true);
+									}
+									else if (strcmp(texType, "Metallic") == 0) {
+										mat->SetMetallicMap(texture);
+										mat->SetUseMetallicMap(true);
+									}
+									else if (strcmp(texType, "Roughness") == 0) {
+										mat->SetRoughnessMap(texture);
+										mat->SetUseRoughnessMap(true);
+									}
+									else if (strcmp(texType, "AO") == 0) {
+										mat->SetAOMap(texture);
+										mat->SetUseAOMap(true);
+									}
+									else if (strcmp(texType, "Emissive") == 0) {
+										mat->SetEmissiveMap(texture);
+										mat->SetUseEmissiveMap(true);
+									}
+									materialChanged = true;
+									ITR_INFO("Set %s Map: {}", texType, textureNode->info.name);
+								}
+							}
+							ImGui::EndDragDropTarget();
+						}
+					}
+
+					// 清除纹理按钮
+					ImGui::Spacing();
+					if (ImGui::Button("Clear All Textures")) {
+						mat->SetAlbedoMap(nullptr);
+						mat->SetNormalMap(nullptr);
+						mat->SetMetallicMap(nullptr);
+						mat->SetRoughnessMap(nullptr);
+						mat->SetAOMap(nullptr);
+						mat->SetEmissiveMap(nullptr);
+						materialChanged = true;
+					}
+
+					if (materialChanged) {
+						ITR_INFO("PBR Material updated");
+					}
+
+					ImGui::Separator();
+					if (ImGui::Button("Remove PBR Material Component")) {
+						m_SelectedGameObject.RemoveComponent<PBRMaterialComponent>();
+					}
+				}
+			}
+		}
+
 		// --- Rigidbody Component ---
 		if (m_SelectedGameObject.HasComponent<RigidbodyComponent>())
 		{
@@ -1099,8 +1320,21 @@ namespace Intro {
 		primitive.AddComponent<MeshComponent>(meshPtr);
 		ITR_INFO("MeshComponent added: {}", primitive.HasComponent<MeshComponent>());
 
-		primitive.AddComponent<MaterialComponent>(material);
-		ITR_INFO("MaterialComponent added: {}", primitive.HasComponent<MaterialComponent>());
+		auto pbrmaterial = std::make_shared<PBRMaterial>(Application::GetShaderLibrary().Get("pbrShader"));
+		if (!pbrmaterial)
+		{
+			ITR_ERROR("PBRMaterial not Found");
+		}
+
+		pbrmaterial->SetAlbedo(glm::vec3(0.8f, 0.1f, 0.1f)); // 明显的红色
+		pbrmaterial->SetMetallic(0.0f);
+		pbrmaterial->SetRoughness(0.5f);
+		pbrmaterial->SetAO(1.0f);
+		pbrmaterial->SetEmissive(glm::vec3(0.0f, 0.0f, 0.0f));
+
+		primitive.AddComponent<PBRMaterialComponent>(pbrmaterial);
+		primitive.GetComponent<PBRMaterialComponent>().Transparent = false;
+		ITR_INFO("MaterialComponent added: {}", primitive.HasComponent<PBRMaterialComponent>());
 
 		switch (type)
 		{
@@ -1686,7 +1920,7 @@ namespace Intro {
 		// 列出所有可添加的组件类型
 		std::vector<std::string> allComponents = {
 			"Mesh", "Model", "Light", "Camera", "Material",
-			"Rigidbody", "Collider"
+			"Rigidbody", "Collider", "PBRMaterial"
 		};
 
 		// 过滤掉已经存在的组件
@@ -1703,10 +1937,14 @@ namespace Intro {
 				shouldAdd = false;
 			else if (compName == "Material" && m_SelectedGameObject.HasComponent<MaterialComponent>())
 				shouldAdd = false;
+			else if (compName == "PBRMaterial" && m_SelectedGameObject.HasComponent<PBRMaterialComponent>()) {
+				shouldAdd = false;
+			}
 			else if (compName == "Rigidbody" && m_SelectedGameObject.HasComponent<RigidbodyComponent>())
 				shouldAdd = false;
 			else if (compName == "Collider" && m_SelectedGameObject.HasComponent<ColliderComponent>())
 				shouldAdd = false;
+
 
 			if (shouldAdd) {
 				m_AvailableComponents.push_back(compName);

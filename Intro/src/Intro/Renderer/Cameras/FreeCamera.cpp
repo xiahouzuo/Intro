@@ -23,8 +23,6 @@ namespace Intro {
         glm::mat4 view = glm::lookAt(Position, target, m_WorldUp);
 
         // µ÷ÊÔÐÅÏ¢
-        ITR_INFO("Camera View Matrix - Pos: ({:.2f}, {:.2f}, {:.2f}), Front: ({:.2f}, {:.2f}, {:.2f})",
-            Position.x, Position.y, Position.z, m_Front.x, m_Front.y, m_Front.z);
 
         return view;
     }

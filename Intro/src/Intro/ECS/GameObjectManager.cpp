@@ -1,5 +1,6 @@
 #include "itrpch.h"
 #include "GameObjectManager.h"
+#include "Intro/ECS/Scene.h"
 #include "Intro/Log.h"
 
 namespace Intro {
