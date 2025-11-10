@@ -7,3 +7,6 @@
 [submodule "Intro/vendor/nlohmann"]
 	path = Intro/vendor/nlohmann
 	url = https://github.com/nlohmann/json
+[submodule "Intro/vendor/GLFW1"]
+	path = Intro/vendor/GLFW1
+	url = https://github.com/TheCherno/glfw
