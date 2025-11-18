@@ -323,6 +323,17 @@ namespace Intro {
             auto shader = material->GetShader();
             if (shader) {
                 shader->SetUniformMat4("u_Transform", item.transform);
+
+                // 如果是PBR材质，确保设置必要的uniform
+                if (currentIsPBR) {
+                    auto pbrMaterial = std::dynamic_pointer_cast<PBRMaterial>(material);
+                    if (pbrMaterial) {
+                        // 确保PBR材质的相关uniform被设置
+                        shader->SetUniformVec3("u_AlbedoColor", pbrMaterial->GetAlbedo());
+                        shader->SetUniformFloat("u_Metallic", pbrMaterial->GetMetallic());
+                        shader->SetUniformFloat("u_Roughness", pbrMaterial->GetRoughness());
+                    }
+                }
             }
 
             // 使用 Renderer 提交

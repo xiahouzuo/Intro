@@ -21,58 +21,127 @@ namespace Intro {
         , m_UseAOMap(false)
         , m_UseEmissiveMap(false)
     {
-        
-    }
+        std::cout << "=== PBRMaterial 构造函数 ===" << std::endl;
 
-    void PBRMaterial::Bind() {
-        std::cout << "=== PBRMaterial::Bind() 被调用 ===" << std::endl;
-        auto shaderPtr = GetShader();
-        if (!shaderPtr) return;
+        if (shader) {
+            std::cout << "着色器ID: " << shader->GetShaderID() << std::endl;
+            std::cout << "着色器是否有效: " << shader->IsValid() << std::endl;
 
-        shaderPtr->Bind();
-        SetPBRUniforms();
-        BindPBRTextures();
-    }
+            // 检查关键Uniform是否存在
+            shader->Bind();
+            GLint albedoLoc = shader->GetUniformLocation("u_AlbedoColor");
+            GLint metallicLoc = shader->GetUniformLocation("u_Metallic");
+            std::cout << "构造函数中Uniform位置 - u_AlbedoColor: " << albedoLoc
+                << ", u_Metallic: " << metallicLoc << std::endl;
 
-    void PBRMaterial::SetPBRUniforms() {
-        auto shaderPtr = GetShader();
-        if (!shaderPtr) return;
-
-        // 检查关键的PBR Uniform是否存在
-        GLint albedoLoc = shaderPtr->GetUniformLocation("u_AlbedoColor");
-        GLint metallicLoc = shaderPtr->GetUniformLocation("u_Metallic");
-        GLint roughnessLoc = shaderPtr->GetUniformLocation("u_Roughness");
-        GLint useAlbedoMapLoc = shaderPtr->GetUniformLocation("u_UseAlbedoMap");
-
-        std::cout << "PBR Uniform Locations:" << std::endl;
-        std::cout << "u_AlbedoColor: " << albedoLoc << std::endl;
-        std::cout << "u_Metallic: " << metallicLoc << std::endl;
-        std::cout << "u_Roughness: " << roughnessLoc << std::endl;
-        std::cout << "u_UseAlbedoMap: " << useAlbedoMapLoc << std::endl;
-
-        // 如果任何关键Uniform返回-1，说明Shader有问题
-        if (albedoLoc == -1 || metallicLoc == -1) {
-            std::cout << "ERROR: 关键PBR Uniform未找到！" << std::endl;
+            // 设置默认sampler
+            shader->SetUniformInt("material_albedo", 0);
+            shader->SetUniformInt("material_normal", 1);
+            shader->SetUniformInt("material_metallic", 2);
+            shader->SetUniformInt("material_roughness", 3);
+            shader->SetUniformInt("material_ao", 4);
+            shader->SetUniformInt("material_emissive", 5);
         }
-
-
-        // 设置PBR材质参数
-        shaderPtr->SetUniformVec3("u_AlbedoColor", m_Albedo);
-        shaderPtr->SetUniformFloat("u_Metallic", m_Metallic);
-        shaderPtr->SetUniformFloat("u_Roughness", m_Roughness);
-        shaderPtr->SetUniformFloat("u_AO", m_AO);
-        shaderPtr->SetUniformVec3("u_EmissiveColor", m_Emissive);
-        shaderPtr->SetUniformFloat("u_Exposure", m_Exposure);
-        shaderPtr->SetUniformVec3("u_AmbientColor", GetAmbient());
-
-        // 设置纹理使用标志
-        shaderPtr->SetUniformInt("u_UseAlbedoMap", m_UseAlbedoMap ? 1 : 0);
-        shaderPtr->SetUniformInt("u_UseNormalMap", m_UseNormalMap ? 1 : 0);
-        shaderPtr->SetUniformInt("u_UseMetallicMap", m_UseMetallicMap ? 1 : 0);
-        shaderPtr->SetUniformInt("u_UseRoughnessMap", m_UseRoughnessMap ? 1 : 0);
-        shaderPtr->SetUniformInt("u_UseAOMap", m_UseAOMap ? 1 : 0);
-        shaderPtr->SetUniformInt("u_UseEmissiveMap", m_UseEmissiveMap ? 1 : 0);
+        else {
+            std::cout << "ERROR: PBR材质没有着色器！" << std::endl;
+        }
     }
+
+void PBRMaterial::Bind() {
+    std::cout << "=== PBRMaterial::Bind() 被调用 ===" << std::endl;
+    auto shaderPtr = GetShader();
+    if (!shaderPtr) {
+        std::cout << "ERROR: PBR材质没有有效的着色器！" << std::endl;
+        return;
+    }
+
+    // 检查着色器是否已链接
+    if (!shaderPtr->IsValid()) {
+        std::cout << "ERROR: PBR着色器未正确链接！" << std::endl;
+        return;
+    }
+
+    shaderPtr->Bind();
+    
+    // 检查OpenGL错误
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR) {
+        std::cout << "ERROR: 绑定着色器时OpenGL错误: " << error << std::endl;
+    }
+
+    SetPBRUniforms();
+    BindPBRTextures();
+    
+    // 再次检查错误
+    error = glGetError();
+    if (error != GL_NO_ERROR) {
+        std::cout << "ERROR: 设置PBR uniform时OpenGL错误: " << error << std::endl;
+    }
+}
+
+void PBRMaterial::SetPBRUniforms() {
+    auto shaderPtr = GetShader();
+    if (!shaderPtr) return;
+
+    std::cout << "=== 设置PBR Uniforms ===" << std::endl;
+
+    // 检查所有关键Uniform
+    const char* uniformNames[] = {
+        "u_AlbedoColor", "u_Metallic", "u_Roughness", "u_AO",
+        "u_EmissiveColor", "u_Exposure", "u_AmbientColor",
+        "u_UseAlbedoMap", "u_UseNormalMap", "u_UseMetallicMap",
+        "u_UseRoughnessMap", "u_UseAOMap", "u_UseEmissiveMap"
+    };
+
+    for (const char* name : uniformNames) {
+        GLint loc = shaderPtr->GetUniformLocation(name);
+        std::cout << "Uniform '" << name << "' 位置: " << loc << std::endl;
+    }
+
+    // 设置PBR材质参数并打印值
+    std::cout << "设置Albedo: (" << m_Albedo.r << ", " << m_Albedo.g << ", " << m_Albedo.b << ")" << std::endl;
+    shaderPtr->SetUniformVec3("u_AlbedoColor", m_Albedo);
+
+    std::cout << "设置Metallic: " << m_Metallic << std::endl;
+    shaderPtr->SetUniformFloat("u_Metallic", m_Metallic);
+
+    std::cout << "设置Roughness: " << m_Roughness << std::endl;
+    shaderPtr->SetUniformFloat("u_Roughness", m_Roughness);
+
+    std::cout << "设置AO: " << m_AO << std::endl;
+    shaderPtr->SetUniformFloat("u_AO", m_AO);
+
+    std::cout << "设置Emissive: (" << m_Emissive.r << ", " << m_Emissive.g << ", " << m_Emissive.b << ")" << std::endl;
+    shaderPtr->SetUniformVec3("u_EmissiveColor", m_Emissive);
+
+    std::cout << "设置Exposure: " << m_Exposure << std::endl;
+    shaderPtr->SetUniformFloat("u_Exposure", m_Exposure);
+
+    glm::vec3 ambient = GetAmbient();
+    std::cout << "设置Ambient: (" << ambient.r << ", " << ambient.g << ", " << ambient.b << ")" << std::endl;
+    shaderPtr->SetUniformVec3("u_AmbientColor", ambient);
+
+    // 设置纹理使用标志
+    std::cout << "纹理使用标志 - Albedo: " << m_UseAlbedoMap
+        << ", Normal: " << m_UseNormalMap
+        << ", Metallic: " << m_UseMetallicMap
+        << ", Roughness: " << m_UseRoughnessMap
+        << ", AO: " << m_UseAOMap
+        << ", Emissive: " << m_UseEmissiveMap << std::endl;
+
+    shaderPtr->SetUniformInt("u_UseAlbedoMap", m_UseAlbedoMap ? 1 : 0);
+    shaderPtr->SetUniformInt("u_UseNormalMap", m_UseNormalMap ? 1 : 0);
+    shaderPtr->SetUniformInt("u_UseMetallicMap", m_UseMetallicMap ? 1 : 0);
+    shaderPtr->SetUniformInt("u_UseRoughnessMap", m_UseRoughnessMap ? 1 : 0);
+    shaderPtr->SetUniformInt("u_UseAOMap", m_UseAOMap ? 1 : 0);
+    shaderPtr->SetUniformInt("u_UseEmissiveMap", m_UseEmissiveMap ? 1 : 0);
+
+    // 检查OpenGL错误
+    GLenum error = glGetError();
+    if (error != GL_NO_ERROR) {
+        std::cout << "ERROR: 设置PBR uniforms时OpenGL错误: " << error << std::endl;
+    }
+}
 
     void PBRMaterial::BindPBRTextures() {
         // 绑定PBR纹理到对应的纹理单元
@@ -174,6 +243,19 @@ namespace Intro {
             shaderPtr->SetUniformInt("material_roughness", 3);
             shaderPtr->SetUniformInt("material_ao", 4);
             shaderPtr->SetUniformInt("material_emissive", 5);
+        }
+
+        // 临时测试：强制设置一个简单的颜色输出
+
+        if (shaderPtr) {
+            // 检查着色器是否有简单的颜色输出uniform
+            GLint simpleColorLoc = shaderPtr->GetUniformLocation("u_SolidColor");
+            if (simpleColorLoc >= 0) {
+                // 如果有，设置为明显的红色
+                shaderPtr->SetUniformVec3("u_SolidColor", glm::vec3(1.0f, 0.0f, 0.0f));
+                std::cout << "设置强制颜色为红色" << std::endl;
+            }
+
         }
 
         // 重置到纹理单元0

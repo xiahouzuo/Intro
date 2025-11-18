@@ -231,6 +231,10 @@
     <ClInclude Include="vendor\imguizmo\ImGuizmo.h">
       <Filter>vendor\imguizmo</Filter>
     </ClInclude>
+    <ClInclude Include="src\Intro\Scripting\IScript.h" />
+    <ClInclude Include="src\Intro\Scripting\ScriptRegistry.h" />
+    <ClInclude Include="src\Intro\Scripting\ScriptSystem.h" />
+    <ClInclude Include="src\Intro\assets\Script\test.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Intro\Application.cpp">
@@ -335,5 +339,7 @@
     <ClCompile Include="vendor\imguizmo\ImGuizmo.cpp">
       <Filter>vendor\imguizmo</Filter>
     </ClCompile>
+    <ClCompile Include="src\Intro\Scripting\ScriptRegistry.cpp" />
+    <ClCompile Include="src\Intro\Scripting\ScriptSystem.cpp" />
   </ItemGroup>
 </Project>

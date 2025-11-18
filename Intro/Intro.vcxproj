@@ -160,6 +160,7 @@
   <ItemGroup>
     <ClInclude Include="src\Intro.h" />
     <ClInclude Include="src\Intro\Application.h" />
+    <ClInclude Include="src\Intro\assets\Script\test.h" />
     <ClInclude Include="src\Intro\Config\Config.h" />
     <ClInclude Include="src\Intro\Config\ConfigObserver.h" />
     <ClInclude Include="src\Intro\Config\RendererConfigUtils.h" />
@@ -212,6 +213,9 @@
     <ClInclude Include="src\Intro\Renderer\UBO.h" />
     <ClInclude Include="src\Intro\Renderer\UniformBuffers.h" />
     <ClInclude Include="src\Intro\Renderer\Vertex.h" />
+    <ClInclude Include="src\Intro\Scripting\IScript.h" />
+    <ClInclude Include="src\Intro\Scripting\ScriptRegistry.h" />
+    <ClInclude Include="src\Intro\Scripting\ScriptSystem.h" />
     <ClInclude Include="src\Intro\Window.h" />
     <ClInclude Include="src\Platform\OpenGL\ImGuiOpenGLRenderer.h" />
     <ClInclude Include="src\Platform\Windows\WindowsInput.h" />
@@ -249,6 +253,8 @@
     <ClCompile Include="src\Intro\Renderer\ShapeGenerator.cpp" />
     <ClCompile Include="src\Intro\Renderer\Skybox.cpp" />
     <ClCompile Include="src\Intro\Renderer\Texture.cpp" />
+    <ClCompile Include="src\Intro\Scripting\ScriptRegistry.cpp" />
+    <ClCompile Include="src\Intro\Scripting\ScriptSystem.cpp" />
     <ClCompile Include="src\Platform\OpenGL\ImGuiOpenGLRenderer.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsInput.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />

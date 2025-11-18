@@ -4,6 +4,7 @@
 #include "GameObjectManager.h"
 #include "GameObject.h"
 #include "Components.h"
+#include "Intro/Scripting/ScriptSystem.h"
 
 namespace Intro {
 
@@ -12,6 +13,7 @@ namespace Intro {
         , m_Active(true)
     {
         m_GameObjectManager = std::make_unique<GameObjectManager>(this);
+        m_ScriptSystem = std::make_unique<ScriptSystem>(this);
     }
 
     Scene::~Scene() = default;
@@ -27,7 +29,9 @@ namespace Intro {
     void Scene::OnUnload() {}
 
     void Scene::OnUpdate(float dt, bool isPlaying) {
-        // 实现...
+        if (isPlaying && m_Active) {
+            m_ScriptSystem->OnUpdate(dt); // 调用脚本更新
+        }
     }
 
     void Scene::OnUpdate(float dt) {

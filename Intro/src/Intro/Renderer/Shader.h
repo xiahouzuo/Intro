@@ -22,6 +22,8 @@ namespace Intro {
 
 		unsigned int GetShaderID() const { return m_ShaderID; }
 
+		bool IsValid() const { return m_ShaderID != 0; }
+
 		void SetUniformMat4(const std::string& name, const glm::mat4& value) const;
 		void SetUniformInt(const std::string& name, int value) const;
 		void SetUniformFloat(const std::string& name, float value) const;

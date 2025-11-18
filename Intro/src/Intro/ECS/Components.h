@@ -15,6 +15,7 @@ namespace Intro {
     class PBRMaterial;
     class Mesh;
     class Transform;
+    class IScript;
 
     // 变换组件：所有实体都可以有
     struct TransformComponent {
@@ -116,6 +117,20 @@ namespace Intro {
         // 只保留必要的便捷方法，其他直接通过 material 访问
         bool HasMaterial() const { return material != nullptr; }
 
+    };
+
+    // 脚本组件
+    struct ScriptComponent {
+        std::shared_ptr<IScript> script;
+        std::string scriptClassName;
+        bool enabled = true;
+
+        ScriptComponent() = default;
+        ScriptComponent(std::shared_ptr<IScript> scriptPtr, const std::string& className = "")
+            : script(std::move(scriptPtr)), scriptClassName(className) {
+        }
+
+        bool HasScript() const { return script != nullptr; }
     };
 
 // 碰撞体类型

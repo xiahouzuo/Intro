@@ -184,9 +184,9 @@ namespace Intro {
         m_Shader->SetUniformMat4("projection", projection);
 
         // 绑定纹理
-        glActiveTexture(GL_TEXTURE0);
+        glActiveTexture(GL_TEXTURE10);
         glBindTexture(GL_TEXTURE_CUBE_MAP, m_CubemapTexture);
-        m_Shader->SetUniformInt("skybox", 0);
+        m_Shader->SetUniformInt("skybox", 10);
 
         // 绘制天空盒
         glBindVertexArray(m_VAO);

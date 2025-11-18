@@ -7,6 +7,7 @@
 #include "Intro/Config/RendererConfigUtils.h"
 #include "Intro/RecourceManager/ResourceManager.h"
 #include "Intro/Physics/PhysicsSystem.h"
+#include "Intro/assets/Script/test.h"
 #include "glm/glm.hpp"
 #include <GLFW/glfw3.h>
 
@@ -67,6 +68,10 @@ namespace Intro {
 
 		Renderer::SetConfig(rendererConfig);
 		Renderer::Init();
+
+		auto& scriptRegistry = ScriptRegistry::Get();
+		
+		scriptRegistry.RegisterScript<RotatorScript>("RotatorScript");
 
 		s_ShaderLibrary = new ShaderLibrary;
 

@@ -25,14 +25,18 @@ void main() {
     vec4 worldPos = u_Transform * vec4(aPos, 1.0);
     vFragPos = worldPos.xyz;
     
-    // 法线矩阵变换
+    
     mat3 normalMat = transpose(inverse(mat3(u_Transform)));
     vNormal = normalize(normalMat * aNormal);
     
-    // 计算TBN矩阵用于法线贴图
+    
     vec3 T = normalize(normalMat * aTangent);
     vec3 B = normalize(normalMat * aBitangent);
     vec3 N = normalize(normalMat * aNormal);
+
+    T = normalize(T - dot(T, N) * N);
+    B = cross(N, T);
+
     vTBN = mat3(T, B, N);
     
     vUV = aUV;

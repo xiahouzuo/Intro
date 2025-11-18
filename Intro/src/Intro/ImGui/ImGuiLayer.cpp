@@ -169,6 +169,9 @@ namespace Intro {
 		if (m_ShowEntityInspector && m_SelectedGameObject.IsValid()) {
 			ShowEntityInspectorWindow();
 		}
+		if (m_ShowScriptManager) {
+			ShowScriptManagerWindow();
+		}
 
 		HandleRenamePopup();
 
@@ -245,6 +248,14 @@ namespace Intro {
 
 			ImGui::EndMenu();
 		}
+
+		if (ImGui::BeginMenu("Script")) {
+			if (ImGui::MenuItem("Script Manager")) {
+				m_ShowScriptManager = true;
+			}
+			ImGui::EndMenu();
+		}
+
 		if (ImGui::BeginMenu("Window"))
 		{
 			ImGui::MenuItem("Entity Manager", nullptr, &m_ShowGameObjectManager);
@@ -252,6 +263,7 @@ namespace Intro {
 			ImGui::MenuItem("Scene Controls", nullptr, &m_ShowSceneControls);
 			ImGui::MenuItem("Renderer Settings", nullptr, &m_ShowRendererSettings);
 			ImGui::MenuItem("Resource Browser", nullptr, &m_ShowResourceBrowser);
+
 			ImGui::Separator();
 			if (ImGui::MenuItem("Show All Windows")) {
 				// 显示所有窗口
@@ -897,6 +909,23 @@ namespace Intro {
 			}
 		}
 
+		// --- Script Component ---
+		if (m_SelectedGameObject.HasComponent<ScriptComponent>()) {
+			if (ImGui::CollapsingHeader("Script", ImGuiTreeNodeFlags_DefaultOpen)) {
+				auto& scriptComp = m_SelectedGameObject.GetComponent<ScriptComponent>();
+
+				ImGui::Text("Script: %s", scriptComp.scriptClassName.c_str());
+				ImGui::Checkbox("Enabled", &scriptComp.enabled);
+
+				if (ImGui::Button("Remove Script")) {
+					auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
+					if (activeScene) {
+						activeScene->GetScriptSystem().RemoveScript(m_SelectedGameObject);
+					}
+				}
+			}
+		}
+
 		// --- Rigidbody Component ---
 		if (m_SelectedGameObject.HasComponent<RigidbodyComponent>())
 		{
@@ -1320,21 +1349,40 @@ namespace Intro {
 		primitive.AddComponent<MeshComponent>(meshPtr);
 		ITR_INFO("MeshComponent added: {}", primitive.HasComponent<MeshComponent>());
 
-		auto pbrmaterial = std::make_shared<PBRMaterial>(Application::GetShaderLibrary().Get("pbrShader"));
-		if (!pbrmaterial)
-		{
-			ITR_ERROR("PBRMaterial not Found");
+		auto pbrShader = Application::GetShaderLibrary().Get("pbrShader");
+		if (!pbrShader) {
+			ITR_ERROR("PBR着色器未找到！");
+			return;
 		}
 
-		pbrmaterial->SetAlbedo(glm::vec3(0.8f, 0.1f, 0.1f)); // 明显的红色
-		pbrmaterial->SetMetallic(0.0f);
-		pbrmaterial->SetRoughness(0.5f);
-		pbrmaterial->SetAO(1.0f);
-		pbrmaterial->SetEmissive(glm::vec3(0.0f, 0.0f, 0.0f));
+		auto pbrmaterial = std::make_shared<PBRMaterial>(pbrShader);
+		if (!pbrmaterial) {
+			ITR_ERROR("PBR材质创建失败！");
+			return;
+		}
 
-		primitive.AddComponent<PBRMaterialComponent>(pbrmaterial);
+		auto diagnosticMaterial = std::make_shared<PBRMaterial>(pbrShader);
+
+		// 设置非常明显的测试参数
+		diagnosticMaterial->SetAlbedo(glm::vec3(1.0f, 0.0f, 0.0f)); // 纯红色
+		diagnosticMaterial->SetMetallic(0.0f); // 非金属
+		diagnosticMaterial->SetRoughness(0.5f); // 中等粗糙度
+		diagnosticMaterial->SetAO(1.0f); // 完全环境光遮蔽
+		diagnosticMaterial->SetEmissive(glm::vec3(0.0f)); // 无自发光
+
+		// 确保不使用任何纹理
+		diagnosticMaterial->SetUseAlbedoMap(false);
+		diagnosticMaterial->SetUseNormalMap(false);
+		diagnosticMaterial->SetUseMetallicMap(false);
+		diagnosticMaterial->SetUseRoughnessMap(false);
+		diagnosticMaterial->SetUseAOMap(false);
+		diagnosticMaterial->SetUseEmissiveMap(false);
+
+		ITR_INFO("诊断PBR材质创建完成 - 纯红色，非金属，中等粗糙度");
+
+		primitive.AddComponent<PBRMaterialComponent>(diagnosticMaterial);
 		primitive.GetComponent<PBRMaterialComponent>().Transparent = false;
-		ITR_INFO("MaterialComponent added: {}", primitive.HasComponent<PBRMaterialComponent>());
+		ITR_INFO("PBRMaterialComponent added: {}", primitive.HasComponent<PBRMaterialComponent>());
 
 		switch (type)
 		{
@@ -1529,6 +1577,43 @@ namespace Intro {
 				if (ImGui::Button("Reload Skybox")) {
 					// 重新加载天空盒
 				}
+			}
+		}
+
+		ImGui::End();
+	}
+
+	void ImGuiLayer::ShowScriptManagerWindow() {
+		ImGui::Begin("Script Manager", &m_ShowScriptManager);
+
+		auto& scriptRegistry = ScriptRegistry::Get();
+		auto registeredScripts = scriptRegistry.GetRegisteredScripts();
+
+		// 显示已注册的脚本类
+		ImGui::Text("Registered Scripts:");
+		ImGui::BeginChild("ScriptList", ImVec2(0, 200), true);
+		for (const auto& scriptName : registeredScripts) {
+			if (ImGui::Selectable(scriptName.c_str(), m_SelectedScriptClass == scriptName)) {
+				m_SelectedScriptClass = scriptName;
+			}
+		}
+		ImGui::EndChild();
+
+		// 添加到选中的GameObject
+		if (ImGui::Button("Add to Selected GameObject") && !m_SelectedScriptClass.empty()) {
+			if (m_SelectedGameObject.IsValid()) {
+				auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
+				if (activeScene) {
+					activeScene->GetScriptSystem().AddScript(m_SelectedGameObject, m_SelectedScriptClass);
+				}
+			}
+		}
+
+		// 重新加载所有脚本按钮
+		if (ImGui::Button("Reload All Scripts")) {
+			auto* activeScene = m_SceneManager ? m_SceneManager->GetActiveScene() : nullptr;
+			if (activeScene) {
+				activeScene->GetScriptSystem().ReloadAllScripts();
 			}
 		}
 

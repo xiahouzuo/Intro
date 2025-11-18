@@ -74,6 +74,8 @@ namespace Intro {
 		void ShowAddComponentPopup();
 		void AddComponentToSelected(const std::string& componentName);
 
+		void ShowScriptManagerWindow();
+
 		// Event handlers (原样保留，封装 ImGui IO 状态)
 		bool OnMouseButtonPressedEvent(MouseButtonPressedEvent& e);
 		bool OnMouseButtonReleasedEvent(MouseButtonReleasedEvent& e);
@@ -151,6 +153,10 @@ namespace Intro {
 		bool m_ShowAddComponentPopup = false;
 		std::vector<std::string> m_AvailableComponents;
 		std::string m_ComponentFilter;
+
+		//Script
+		bool m_ShowScriptManager = false;
+		std::string m_SelectedScriptClass;
 	};
 
 } // namespace Intro

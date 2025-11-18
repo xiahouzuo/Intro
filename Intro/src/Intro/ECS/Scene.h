@@ -6,6 +6,7 @@
 #include <vector>
 #include "ECS.h"
 #include "Intro/Core.h"
+#include "Intro/Scripting/ScriptSystem.h"
 #include <glm/glm.hpp>
 
 namespace Intro {
@@ -13,6 +14,7 @@ namespace Intro {
     // 前置声明
     class GameObjectManager;
     class GameObject;
+    class SceneSystem;
 
     // Scene 表示一个独立的世界 / 场景（拥有自己的 ECS/registry 等）
     class ITR_API Scene {
@@ -73,6 +75,9 @@ namespace Intro {
         void SetMainCamera(GameObject camera);
         GameObject FindMainCamera();
 
+        ScriptSystem& GetScriptSystem() { return *m_ScriptSystem; }
+        const ScriptSystem& GetScriptSystem() const { return *m_ScriptSystem; }
+
     protected:
         ECS m_ECS;
 
@@ -85,6 +90,8 @@ namespace Intro {
 
         // 修改：使用 Entity 而不是 GameObject 来避免头文件依赖
         ECS::Entity m_MainCameraEntity{ entt::null };
+
+        std::unique_ptr<ScriptSystem> m_ScriptSystem;
     };
 
 } // namespace Intro
